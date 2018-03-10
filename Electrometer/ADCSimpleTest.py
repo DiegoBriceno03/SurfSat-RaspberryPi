@@ -91,7 +91,9 @@ while True:
 			data = -(datatc & 0x8000) | (datatc & 0x7FFF)
 
 			# Print received data bytes and processed ADC values to stdout:
-			sys.stdout.write(', Data: 0x' + format(datatc, 'x').upper() + ' (' + str(data) + ')' + '\n')
+			# At 4.096 V PGA setting, one bin has a value of 125 uV (4.096/0x7FFF), so fourth decimal place is uncertain.
+			# Since the ADC saves space for negative values as well, the single ended range is only 15 bits (therefore 0x7FFF bins).
+			sys.stdout.write(', Data: 0x' + format(datatc, 'x').upper() + ' (' + ('%+.4f V' % (data*4.096/0x7FFF)) + ')' + '\n')
 		# Initialize new readings at a frequency of 10 Hz:
 		while time.time() - starttime < 0.1: 
 			continue

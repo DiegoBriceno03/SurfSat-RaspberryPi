@@ -73,11 +73,11 @@ def sample():
 	# Initialize countdown to next sample:
 	threading.Timer(0.1, sample).start()
 
-	# Record current sample time:
-	databuffer['time'] = time.time() - inittime
-
 	# Declare global storage variables:
 	global dataready, databuffer
+
+	# Record current sample time:
+	databuffer['time'] = time.time() - inittime
 
 	# Cycle through each of the four ADC input channels in series:
 	for channel in range(4):

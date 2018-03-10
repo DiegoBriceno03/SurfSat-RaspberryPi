@@ -103,4 +103,4 @@ while True:
 
 	# Initialize new readings at a frequency of 10 Hz:
 	while time.time() - starttime < 0.1: 
-		continue
+		time.sleep(0.01)

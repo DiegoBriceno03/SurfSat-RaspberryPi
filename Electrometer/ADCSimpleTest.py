@@ -86,7 +86,7 @@ while True:
 			time.sleep(1/860.0+0.001)
 			datatc = bus.read_word_data(address, REG_CONV)
 
-			# Swap order of bytes and convert out of two's complement:
+			# Swap order of bytes and convert out of two byte two's complement to integer length two's complement:
 			datatc = ((datatc & 0xFF00) >> 8) | ((datatc & 0x00FF) << 8)
 			data = -(datatc & 0x8000) | (datatc & 0x7FFF)
 

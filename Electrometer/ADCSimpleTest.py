@@ -12,25 +12,25 @@ bus = smbus.SMBus(DEVICE_BUS)
 
 # Address pointer register (P)
 # 07:02  Reserved[5:0]  Always write 0
-# 01:00  P[1:0]		 Register address pointer
-#						 0b00: Conversion register
-#						 0b01: Configuration register
-#						 0b10: Low threshold register
-#						 0b11: High threshold register
+# 01:00  P[1:0]         Register address pointer
+#                         0b00: Conversion register
+#                         0b01: Configuration register
+#                         0b10: Low threshold register
+#                         0b11: High threshold register
 REG_CONV = 0x00  # 0b00
 REG_CONF = 0x01  # 0b01
 REG_LOW  = 0x02  # 0b02
 REG_HIGH = 0x03  # 0b03
 
 # Configuration register
-# 15	 OS			 Operational status or single-shot start
-# 14:12  MUX[2:0]	   Input multiplexer configuration
-# 11:09  PGA[2:0]	   Programmable gain amplifier configuration
-# 08	 MODE		   Device operating mode
-# 07:05  DR[2:0]		Data rate
-# 04	 COMP_MODE	  Comparator mode
-# 03	 COMP_POL	   Comparator polarity
-# 02	 COMP_LAT	   Latching comparator
+# 15     OS             Operational status or single-shot start
+# 14:12  MUX[2:0]       Input multiplexer configuration
+# 11:09  PGA[2:0]       Programmable gain amplifier configuration
+# 08     MODE           Device operating mode
+# 07:05  DR[2:0]        Data rate
+# 04     COMP_MODE      Comparator mode
+# 03     COMP_POL       Comparator polarity
+# 02     COMP_LAT       Latching comparator
 # 01:00  COMP_QUE[1:0]  Comparator queue
 
 # CONF_OS: 0b0 No Effect, 0b1 Start Single Conversion
@@ -40,14 +40,14 @@ CONF_OS = 0x01 # 0b1
 CONF_MUX = (1 << 2) | 0x00 # 0b1XX
 
 # CONF_PGA: 0b000 6.144V, 0b001 4.096V, 0b010 2.048V, 0b011 1.024V,
-#		   0b100 0.512V, 0b101 0.256V, 0b110 0.256V, 0b111 0.256V
+#           0b100 0.512V, 0b101 0.256V, 0b110 0.256V, 0b111 0.256V
 CONF_PGA = 0x01 # 0b001
 
 # CONF_MODE: 0b0 Continuous, 0b1 Single-shot
 CONF_MODE = 0x01 # 0b1
 
 # CONF_DR: 0b000   8 SPS, 0b001  16 SPS, 0b010  32 SPS, 0b011  64 SPS,
-#		  0b100 128 SPS, 0b101 250 SPS, 0b110 475 SPS, 0b111 860 SPS
+#          0b100 128 SPS, 0b101 250 SPS, 0b110 475 SPS, 0b111 860 SPS
 CONF_DR = 0x07 # 0b111
 
 # CONF_COMP_MODE: 0b0 Traditional, 0b1 Window

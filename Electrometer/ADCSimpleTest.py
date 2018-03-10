@@ -63,27 +63,35 @@ CONF_COMP_LAT = 0x00 # 0b0
 CONF_COMP_QUE = 0x03 # 0b11
 
 while True:
+	# Alternate between two ADC chips on I2C bus:
 	for address in [0x48, 0x49]:
+		# Record current time and print along with address of chip being accessed to stdout:
 		starttime = time.time()
 		sys.stdout.write('Address: 0x' + format(address, 'x').upper())
 		sys.stdout.write(', Time: ' + str(starttime) + '\n')
+		# Cycle through each of the four ADC input channels in series:
 		for channel in range(4):
+			# Print current channel to stdout:
 			sys.stdout.write('  Channel: ' + str(channel))
 
+			# Generate bits to connect multiplexer to correct channel and generate configuration bytes:
 			CONF_MUX = (1 << 2) | channel # 0b1XX
-
 			config = [(CONF_OS << 7) | (CONF_MUX << 4) | (CONF_PGA << 1) | CONF_MODE, (CONF_DR << 5) | (CONF_COMP_MODE << 4) | (CONF_COMP_POL << 3) | (CONF_COMP_LAT << 2) | CONF_COMP_QUE]
 
+			# Concatenate both configuration bytes and print value to stdout:
 			sys.stdout.write(', Config: 0x' + format((config[0] << 8) + config[1], 'x').upper())
 
+			# Write configuration bytes to chip, wait for conversion to take place, and read in conversion bytes:
 			bus.write_i2c_block_data(address, REG_CONF, config)
 			time.sleep(1/860.0+0.001)
 			datatc = bus.read_word_data(address, REG_CONV)
+
 			# Swap order of bytes and convert out of two's complement:
 			datatc = ((datatc & 0xFF00) >> 8) | ((datatc & 0x00FF) << 8)
 			data = -(datatc & 0x8000) | (datatc & 0x7FFF)
 
+			# Print received data bytes and processed ADC values to stdout:
 			sys.stdout.write(', Data: 0x' + format(datatc, 'x').upper() + ' (' + str(data) + ')' + '\n')
-		sys.stdout.flush()
+		# Initialize new readings at a frequency of 10 Hz:
 		while time.time() - starttime < 0.1: 
 			continue

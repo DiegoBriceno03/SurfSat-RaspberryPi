@@ -67,8 +67,7 @@ while True:
 	for address in [0x48, 0x49]:
 		# Record current time and print along with address of chip being accessed to stdout:
 		starttime = time.time()
-		sys.stdout.write('Address: 0x' + format(address, 'x').upper())
-		sys.stdout.write(', Time: ' + str(starttime) + '\n')
+		sys.stdout.write('Address: 0x{0:02X}, Time: {1:f}\n'.format(address, starttime))
 		# Cycle through each of the four ADC input channels in series:
 		for channel in range(4):
 			# Print current channel to stdout:
@@ -79,7 +78,7 @@ while True:
 			config = [(CONF_OS << 7) | (CONF_MUX << 4) | (CONF_PGA << 1) | CONF_MODE, (CONF_DR << 5) | (CONF_COMP_MODE << 4) | (CONF_COMP_POL << 3) | (CONF_COMP_LAT << 2) | CONF_COMP_QUE]
 
 			# Concatenate both configuration bytes and print value to stdout:
-			sys.stdout.write(', Config: 0x' + format((config[0] << 8) + config[1], 'x').upper())
+			sys.stdout.write(', Config: 0x{0:04X}'.format((config[0] << 8) | config[1]))
 
 			# Write configuration bytes to chip, wait for conversion to take place, and read in conversion bytes:
 			bus.write_i2c_block_data(address, REG_CONF, config)
@@ -93,7 +92,7 @@ while True:
 			# Print received data bytes and processed ADC values to stdout:
 			# At 4.096 V PGA setting, one bin has a value of 125 uV (4.096/0x7FFF), so fourth decimal place is uncertain.
 			# Since the ADC saves space for negative values as well, the single ended range is only 15 bits (therefore 0x7FFF bins).
-			sys.stdout.write(', Data: 0x' + format(datatc, 'x').upper() + ' (' + ('%+.4f V' % (data*4.096/0x7FFF)) + ')' + '\n')
+			sys.stdout.write(', Data: 0x{0:04X} ({1:+.4f} V)\n'.format(datatc, data*4.096/0x7FFF))
 		# Initialize new readings at a frequency of 10 Hz:
 		while time.time() - starttime < 0.1: 
 			continue

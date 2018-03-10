@@ -65,15 +65,16 @@ CONF_COMP_QUE = 0x03 # 0b11
 while True:
 	for address in [0x48, 0x49]:
 		starttime = time.time()
+		sys.stdout.write('Address: 0x' + format(address, 'x').upper())
+		sys.stdout.write(', Time: ' + str(starttime) + '\n')
 		for channel in range(4):
-			sys.stdout.write('Address: ' + hex(address).upper())
-			sys.stdout.write(', Channel: ' + str(channel))
+			sys.stdout.write('  Channel: ' + str(channel))
 
 			CONF_MUX = (1 << 2) | channel # 0b1XX
 
 			config = [(CONF_OS << 7) | (CONF_MUX << 4) | (CONF_PGA << 1) | CONF_MODE, (CONF_DR << 5) | (CONF_COMP_MODE << 4) | (CONF_COMP_POL << 3) | (CONF_COMP_LAT << 2) | CONF_COMP_QUE]
 
-			sys.stdout.write(', Config: ' + hex((config[0] << 8) + config[1]).upper())
+			sys.stdout.write(', Config: 0x' + format((config[0] << 8) + config[1], 'x').upper())
 
 			bus.write_i2c_block_data(address, REG_CONF, config)
 			time.sleep(1/860.0+0.001)
@@ -82,7 +83,7 @@ while True:
 			datatc = ((datatc & 0xFF00) >> 8) | ((datatc & 0x00FF) << 8)
 			data = -(datatc & 0x8000) | (datatc & 0x7FFF)
 
-			sys.stdout.write(', Data: ' + hex(datatc).upper() + ' (' + str(data) + ')' + "\n")
-			sys.stdout.flush()
+			sys.stdout.write(', Data: 0x' + format(datatc, 'x').upper() + ' (' + str(data) + ')' + '\n')
+		sys.stdout.flush()
 		while time.time() - starttime < 0.1: 
 			continue

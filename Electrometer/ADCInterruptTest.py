@@ -11,7 +11,7 @@ GPIO.setmode(GPIO.BCM)
 DEVICE_BUS = 1
 DEVICE_INDEX = 0
 DEVICE_ADDRS = [0x48, 0x49]
-DEVICE_GPIOS = [17, 18]
+DEVICE_GPIOS = [24, 10]
 DEVICE_ADDR = DEVICE_ADDRS[DEVICE_INDEX]
 DEVICE_GPIO = DEVICE_GPIOS[DEVICE_INDEX]
 
@@ -109,7 +109,7 @@ def sample():
 		bus.write_i2c_block_data(DEVICE_ADDR, REG_CONF, config)
 
 		# Wait for conversion to complete (either start based on signal from ADC or wait for timeout) and read in results:
-		if GPIO.wait_for_edge(DEVICE_GPIO, GPIO.FALLING, timeout=math.ceil(1000*(1/860.0+0.001))) is None: print('ADC not ready, so waiting ...')
+		if GPIO.wait_for_edge(DEVICE_GPIO, GPIO.FALLING, timeout=math.ceil(1000*(1/860.0+0.0001))) is None: print('ADC not ready on channel ' + str(channel) + ', so waiting ...')
 		datatc = bus.read_word_data(DEVICE_ADDR, REG_CONV)
 
 		# Swap order of bytes and convert out of two byte two's complement to integer length two's complement:

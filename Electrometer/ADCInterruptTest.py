@@ -1,3 +1,4 @@
+import os
 import sys
 import math
 import time
@@ -5,6 +6,16 @@ import smbus
 import threading
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
+
+DELAY = 0.1
+
+# Create data directory if it does not exist
+if os.path.exists('data'):
+	if not os.path.isdir('data'):
+		print('Data directory is file and not directory. Please fix!')
+		sys.exit(1)
+else:
+	os.makedirs('data')
 
 # Primary ADC with address 0x48, secondary ADC with address 0x49
 # Addresses 0x48 (GND), 0x49 (VDD), 0x4A (SDA), 0x4B (SCL)
@@ -77,7 +88,9 @@ CONF_COMP_QUE = 0x00 # 0b00
 inittime = time.time()
 
 dataready = False
-databuffer = {'time': 0, 'config': [], 'C0': [], 'C1': [], 'C2': [], 'C3': []}
+databuffer = {'Time': 0, 'C0': '', 'C1': '', 'C2': '', 'C3': '', 'Error': False}
+
+failures = 0
 
 def init():
 	# Set Lo_thresh and Hi_thresh registers to enable conversion ready pin
@@ -87,14 +100,20 @@ def init():
 	bus.write_i2c_block_data(DEVICE_ADDR, REG_HIGH, [0x80, 0x00])
 
 def sample():
-	# Initialize countdown to next sample:
-	threading.Timer(0.1, sample).start()
-
 	# Declare global storage variables:
-	global dataready, databuffer
+	global dataready, databuffer, failures
+
+	# Initialize countdown to next sample:
+	threading.Timer(DELAY, sample).start()
+
+	# Wait for buffer to be emptied:
+	while dataready: pass
+
+	# Clear error flag on data buffer:
+	databuffer['Error'] = False
 
 	# Record current sample time:
-	databuffer['time'] = time.time() - inittime
+	databuffer['Time'] = time.time() - inittime
 
 	# Cycle through each of the four ADC input channels in series:
 	for channel in range(4):
@@ -102,41 +121,58 @@ def sample():
 		CONF_MUX = (1 << 2) | channel # 0b1XX
 		config = [(CONF_OS << 7) | (CONF_MUX << 4) | (CONF_PGA << 1) | CONF_MODE, (CONF_DR << 5) | (CONF_COMP_MODE << 4) | (CONF_COMP_POL << 3) | (CONF_COMP_LAT << 2) | CONF_COMP_QUE]
 
-		# Concatenate both configuration bytes and store value in buffer:
-		#databuffer['config'].append('0x{0:04X}'.format((config[0] << 8) | config[1]))
-
 		# Write configuration bytes to chip, wait for conversion to take place, and read in conversion bytes:
 		bus.write_i2c_block_data(DEVICE_ADDR, REG_CONF, config)
 
 		# Wait for conversion to complete (either start based on signal from ADC or wait for timeout) and read in results:
-		if GPIO.wait_for_edge(DEVICE_GPIO, GPIO.FALLING, timeout=math.ceil(1000*(1/860.0+0.0001))) is None: print('ADC not ready on channel ' + str(channel) + ', so waiting ...')
-		datatc = bus.read_word_data(DEVICE_ADDR, REG_CONV)
+		try:
+			if GPIO.input(DEVICE_GPIO) == 0 or GPIO.wait_for_edge(DEVICE_GPIO, GPIO.FALLING, timeout=math.ceil(1000*(1/860.0+0.0001))) == DEVICE_GPIO: pass
+			else:
+				failures += 1
+				databuffer['Error'] = True
+				print('ADC not ready on channel ' + str(channel) + ', so waiting (' + str(failures) + ' total) ...')
+		except RuntimeError:
+			failures += 1
+			databuffer['Error'] = True
+			print('ADC not ready on channel ' + str(channel) + ' (' + str(failures) + ' total) ...')
 
-		# Swap order of bytes and convert out of two byte two's complement to integer length two's complement:
-		datatc = ((datatc & 0xFF00) >> 8) | ((datatc & 0x00FF) << 8)
-		data = -(datatc & 0x8000) | (datatc & 0x7FFF)
-
-		# Store received data bytes and processed ADC values in buffer:
-		# At 4.096 V PGA setting, one bin has a value of 125 uV (4.096/0x7FFF), so fourth decimal place is uncertain.
-		# Since the ADC saves space for negative values as well, the single ended range is only 15 bits (therefore 0x7FFF bins).
-		databuffer['C' + str(channel)].append('(0x{0:02X}): 0x{1:04X} ({2:+.4f} V)'.format(DEVICE_ADDR, datatc, data*4.096/0x7FFF))
+		databuffer['C' + str(channel)] = bus.read_word_data(DEVICE_ADDR, REG_CONV)
 
 	dataready = True
+
+fh = open('data/' + str(int(inittime)) + '.txt', 'w')
 
 init()
 sample()
 
 while True:
-	time.sleep(0.01)
-	if dataready:
-		dataparse = databuffer
-		databuffer = {'time': 0, 'addr': [], 'config': [], 'C0': [], 'C1': [], 'C2': [], 'C3': []}
-		dataready = False
+	try:
+		time.sleep(0.01)
+		if dataready:
+			# Read off the buffer and let the thread know it is empty now:
+			dataparse = databuffer
+			dataready = False
 
-		sys.stdout.write('Time: {0:.2f} s\n'.format(dataparse['time']))
-		for channel in range(4):
-			sys.stdout.write('  Channel: ' + str(channel))
-			#sys.stdout.write(', Config: ' + dataparse['config'][channel])
-			for data in dataparse['C' + str(channel)]:
-				sys.stdout.write(', Data ' + data)
-			sys.stdout.write('\n')
+			# Write elapsed time to file and stdout:
+			datastr = 'Time: {0:.3f} s'.format(dataparse['Time'])
+			fh.write(datastr)
+			sys.stdout.write(datastr)
+			for channel in range(4):
+				# Swap order of bytes and convert out of two byte two's complement to integer length two's complement:
+				datatc = dataparse['C' + str(channel)]
+				datatc = ((datatc & 0xFF00) >> 8) | ((datatc & 0x00FF) << 8)
+				data = -(datatc & 0x8000) | (datatc & 0x7FFF)
+
+				# Write received data bytes and processed ADC values to file and stdout:
+				# At 4.096 V PGA setting, one bin has a value of 125 uV (4.096/0x7FFF), so fourth decimal place is uncertain.
+				# Since the ADC saves space for negative values as well, the single ended range is only 15 bits (therefore 0x7FFF bins).
+				datastr = ', C' + str(channel) + ': 0x{0:04X} ({1:+.4f} V)'.format(datatc, data*4.096/0x7FFF)
+				fh.write(datastr)
+				sys.stdout.write(datastr)
+			datastr = ' *\n' if dataparse['Error'] else '\n'
+			fh.write(datastr)
+			sys.stdout.write(datastr)
+	except KeyboardInterrupt:
+		fh.close()
+		GPIO.cleanup()
+		sys.exit(0)

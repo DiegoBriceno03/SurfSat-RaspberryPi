@@ -12,8 +12,8 @@ else:
 
 # Take user input and encode string as bytes before transmit
 cmd = input("Serial command: ")
-ser.write(cmd.encode())
+ser.write(bytes(cmd, encoding='UTF-8'))
 
 # Read one line of serial data and decode bytes to string
 data = ser.readline()
-print(data.decode())
+print(data)

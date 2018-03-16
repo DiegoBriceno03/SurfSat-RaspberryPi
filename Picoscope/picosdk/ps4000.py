@@ -14,9 +14,9 @@
  *
 """
 
-from picoscope.ps5000base import *
+from picosdk.ps5000base import *
 from psutils import *
-from picoscope import ps5000base
+from picosdk import ps5000base
 
 name = "ps4000"
 _libps4000 = psloadlib(name)

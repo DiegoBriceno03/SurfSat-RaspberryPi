@@ -16,7 +16,7 @@
 
 from ps5000base import *
 from psutils import *
-from picoscope import ps5000base
+from picosdk import ps5000base
 
 name = "ps2000a"
 _libps2000a = psloadlib(name)

@@ -336,7 +336,7 @@ def main():
     if options.variant != "":
         for d in drivers:
             try:
-                module = importlib.import_module("picoscope.%s" % d)
+                module = importlib.import_module("picosdk.%s" % d)
                 if options.variant not in module.variants:
                     module = None
                     continue
@@ -359,7 +359,7 @@ def main():
         else:
             for d in drivers:
                 try:
-                    module = importlib.import_module("picoscope.%s" % d)
+                    module = importlib.import_module("picosdk.%s" % d)
                     units = module.enumerate_units()
                     if len(units) > 0 and options.serial in units:
                         break
@@ -371,7 +371,7 @@ def main():
         units = ()
         for d in drivers:
             try:
-                module = importlib.import_module("picoscope.%s" % d)
+                module = importlib.import_module("picosdk.%s" % d)
                 units = module.enumerate_units()
                 if len(units) > 0:
                     break

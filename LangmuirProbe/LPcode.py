@@ -38,14 +38,14 @@ GPIO.setup(LP_STATUS_PIN, GPIO.IN)
 
 print("Resetting FPGA...")
 GPIO.output(LP_RESET_PIN, GPIO.LOW)
-time.sleep(1.0)
+time.sleep(0.2)
 GPIO.output(LP_RESET_PIN, GPIO.HIGH)
-time.sleep(1.0)
+time.sleep(0.2)
 print("Enabling board...")
 GPIO.output(LP_ENABLE_PIN, GPIO.HIGH)
-time.sleep(1.0)
+time.sleep(0.2)
 
-#defining serial characteristics
+#Defining serial
 ser = serial.Serial(
 
 	port="/dev/serial0",
@@ -53,52 +53,66 @@ ser = serial.Serial(
 	parity = serial.PARITY_NONE,
 	stopbits = serial.STOPBITS_ONE,
 	bytesize = serial.EIGHTBITS,
-	timeout = 0
+	timeout = None
 
 	)
 
+
+#File.txt to save data
 saveFile = open('data.txt','w')
-#abort if serial connect fails
+
+
+#Abort program if serial port does not open
 if not ser.is_open:
+	#print("Failed to open serial port")
 	sys.exit(1)
-	#print('failed to open serial port')
 
-#RxD LP goes to 8 on Py
 
-#checking status pin - if bad status, turn off and quit program
-#GPIO.setup(LP_STATUS_PIN, GPIO.IN)
+#Check LP_STATUS_PIN;  if bad status, abort
 #if GPIO.input(LP_STATUS_PIN) == ???
-#	print("Status check failed, powering off")
+#	print("Status check failed, disabling board and aborting program")
 #	sys.stdout.flush()
 #	GPIO.output(LP_ENABLE_PIN, GPIO.LOW)
 #	sys.exit(1)
 
-#PLP Command Byte - first time sending - START collecting continuous data
+
+#PLP Command Byte - FIRST time sending the byte - START collecting continuous data
 #science - science mode - single waveform - fixed bias - continuous - fast
 #binary(11100101) - hex(E5) - decimal(229)
-
-#commandByte = bytes([0xE5])
-commandByte = b'\xE5'
+#science - science mode - single waveform - swept bias - continuous - fast
+#binary(11100001) - hex(E1)
+commandByte = b'\xE1'
 print(commandByte)
 ser.write(commandByte)
 
-#receive data for 3 seconds
-#t_end = time.time() + 60 / 20
 print("Saving data to \"data.txt\"")
+#header = ser.read(4)
+#value = 0
+#for i, x in enumerate(header):
+#	value |= (x << (len(header)-i-1)*8)
+#print(header, '{0:x}'.format(value), commandByte)
+#if header[3] is not commandByte:
+#	print('Echoed command byte does not match!')
+
 while True:
 	try:
 		data = ser.read(4)
+		current = data[0] << 8 | data[1]
+		voltage = data[2] << 8 | data[3]
+		datastr = "{0:x}, {1:x}\n".format(current, voltage)
 		if data is not b'':
-			print(data)
+			sys.stdout.write(datastr)
 		#save data to file - must cast str() to read list into file, use NO str() if using print()
-		saveFile.write(str(["{0:x}\n".format(x) for x in data[:-1]]))
+			saveFile.write(datastr)
 	except KeyboardInterrupt:
 		break
 
 saveFile.close()
 
-#PLP Command Byte - second time sending - STOP collecting data
-#idleCommandByte = b'01100101'
+#PLP Command Byte - SECOND time sending the byte - STOP collecting continuous  data
+#idle - science mode - single waveform - fixed bias - continuous - fast
+#binary(01100101) - hex(65) - decimal (101)
+
 #idleCommandByte = bytes([0x65])
 idleCommandByte = b'\x65'
 ser.write(idleCommandByte)
@@ -107,9 +121,4 @@ print("Disabling board...")
 GPIO.output(LP_ENABLE_PIN, GPIO.LOW)
 
 GPIO.cleanup()
-#some testing stuff
-#cmd = input("Serial command: ")
-#ser.write(cmd.encode())
 
-#data = ser.readline()
-#print(data.decode())

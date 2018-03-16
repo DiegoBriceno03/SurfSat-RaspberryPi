@@ -709,7 +709,8 @@ def main():
                                 validate_sine(ps, buffers[s][m][c], options.std_limit, options.max_limit)
 
             if options.graph or options.show_graph:
-                fig, pts = plt.subplots(len(channels), len(modes) * len(segments_list), sharex=True, sharey=bulk)
+                #fig, pts = plt.subplots(len(channels), len(modes) * len(segments_list), sharex=True, sharey=bulk)
+                fig, pts = plt.subplots(1, 1)
                 fig.canvas.set_window_title("Ratio %d" % r)
 
                 timecut = r * info["real_interval"] * info["samples"]
@@ -732,40 +733,48 @@ def main():
                     for k in range(0, len(num_modes)):
                         m = num_modes[k]
                         if options.graph or options.show_graph:
-                            if len(num_modes) * len(segments_list) > 1:
-                                if len(channels) > 1:
-                                    p = pts[i][k * len(segments_list) + j]
-                                else:
-                                    p = pts[k * len(segments_list) + j]
-                            else:
-                                if len(channels) * len(segments_list) > 1:
-                                    p = pts[i * len(segments_list) + j]
-                                else:
-                                    p = pts
-                            p.clear()
+                            p = pts
+                            #if len(num_modes) * len(segments_list) > 1:
+                                #if len(channels) > 1:
+                                    #p = pts[i][k * len(segments_list) + j]
+                                #else:
+                                    #p = pts[k * len(segments_list) + j]
+                            #else:
+                                #if len(channels) * len(segments_list) > 1:
+                                    #p = pts[i * len(segments_list) + j]
+                                #else:
+                                    #p = pts
+                            #p.clear()
                             p.set_xlim(graph_limit)
+
+                            label = "Ch%s%s M%s R%d [%s]" % (ps.m.Channels.labels[c],
+                                            (" S%d" % s) if len(segments_list) > 1 else "",
+                                            ps.m.RatioModes.labels[m], r,
+                                            ps.m.TimeUnits.ascii_labels[time_units])
 
                             if m == ps.m.RatioModes.agg:
                                 data_limit = min(len(data[s][c]["max"]), info["samples"])
-                                li, = p.plot(time_domain[:data_limit], data[s][c]["max"][:data_limit])
+                                li, = p.plot(time_domain[:data_limit], data[s][c]["max"][:data_limit], label=label)
                                 li.set_color(colors[i])
-                                li, = p.plot(time_domain[:data_limit], data[s][c]["min"][:data_limit])
+                                li, = p.plot(time_domain[:data_limit], data[s][c]["min"][:data_limit], label=label)
                                 li.set_color(ncolors[c])
                             else:
                                 data_limit = min(len(data[s][c][ps.m.RatioModes.labels[m]]), info["samples"])
                                 li, = p.plot(time_domain[:data_limit],
-                                             data[s][c][ps.m.RatioModes.labels[m]][:data_limit])
+                                             data[s][c][ps.m.RatioModes.labels[m]][:data_limit], label=label)
                                 li.set_color(colors[c])
                             if options.validate:
                                 li, = p.plot(time_domain[:data_limit],
                                              ideal[s][c][ps.m.RatioModes.labels[m]][:data_limit], '--')
                                 li.set_color(idealcolor)
 
-                            p.set_xlabel("Ch%s%s M%s R%d [%s]"
-                                         % (ps.m.Channels.labels[c],
-                                            (" S%d" % s) if len(segments_list) > 1 else "",
-                                            ps.m.RatioModes.labels[m], r,
-                                            ps.m.TimeUnits.ascii_labels[time_units]))
+                            p.legend()
+
+                            #p.set_xlabel("Ch%s%s M%s R%d [%s]"
+                            #             % (ps.m.Channels.labels[c],
+                            #                (" S%d" % s) if len(segments_list) > 1 else "",
+                            #                ps.m.RatioModes.labels[m], r,
+                            #                ps.m.TimeUnits.ascii_labels[time_units]))
                         if options.trigger and triggc == c:
                             triggx = options.triggh * samples
                             triggy = options.triggv * ps.info.max_adc

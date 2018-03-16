@@ -77,14 +77,14 @@ if not ser.is_open:
 
 
 # PLP Command Byte - FIRST time sending the byte - START collecting continuous data
-# science - science mode - single waveform - fixed bias - continuous - fast
-# binary(11100101) - hex(E5)
-# science - science mode - single waveform - swept bias - continuous - fast
-# binary(11100001) - hex(E1)
-# science - science mode - single waveform - fixed bias - continuous - slow
-# binary(11100100) - hex(E4)
-# science - science mode - single waveform - swept bias - continuous - slow
-# binary(11100000) - hex(E0)
+# science - science mode - single waveform - fixed bias - continuous - fast: binary(11100101) - hex(E5)
+# science - science mode - single waveform - swept bias - continuous - fast: binary(11100001) - hex(E1)
+# science - science mode - single waveform - fixed bias - continuous - slow: binary(11100100) - hex(E4)
+# science - science mode - single waveform - swept bias - continuous - slow: binary(11100000) - hex(E0)
+# science - science mode - single waveform - fixed bias - pulsed     - fast: binary(11100111) - hex(E7)
+# science - science mode - single waveform - swept bias - pulsed     - fast: binary(11100011) - hex(E3)
+# science - science mode - single waveform - fixed bias - pulsed     - slow: binary(11100110) - hex(E6)
+# science - science mode - single waveform - swept bias - pulsed     - slow: binary(11100010) - hex(E2)
 commandByte = b'\xE0'
 print(commandByte)
 ser.write(commandByte)

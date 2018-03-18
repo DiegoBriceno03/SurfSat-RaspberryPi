@@ -1,10 +1,8 @@
 import os
 import sys
-import math
 import time
 import smbus
 import pigpio
-import threading
 
 # Create data directory if it does not exist
 if os.path.exists('data'):
@@ -98,6 +96,7 @@ CONF_COMP_QUE = 0x00 # 0b00
 
 channel = 0
 databuffer = []
+firstrun = True
 
 def init():
 	global cb
@@ -111,9 +110,10 @@ def init():
 	cb = pi.callback(CLOCK_PIN, pigpio.RISING_EDGE, req_sample)
 
 def req_sample(gpio, level, tick):
-	global cb1, channel, databuffer
+	global cb1, channel, databuffer, firstrun
 
-	if pi.read(DEVICE_GPIO) == 1: return
+	if pi.read(DEVICE_GPIO) == 1 and not firstrun: return
+	elif firstrun: firstrun = False
 
 	# Cycle through each of the four ADC input channels in series:
 	# Generate bits to connect multiplexer to correct channel and generate configuration bytes:
@@ -134,10 +134,7 @@ def read_sample(gpio, level, tick):
 
 fh = open('data/' + str(int(time.time())) + '.txt', 'w')
 
-print('running init')
 init()
-print('starting main loop')
-
 while True:
 	try:
 		time.sleep(0.01)

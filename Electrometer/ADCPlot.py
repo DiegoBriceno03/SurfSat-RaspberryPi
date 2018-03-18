@@ -29,7 +29,7 @@ with open(filename, 'r') as f:
 
 plt.figure(1)
 plt.title("Electrometer Data")
-plt.xlabel("Time (s)")
+plt.xlabel("Time (us)")
 plt.ylabel("Voltage (V)")
 plt.plot(T1, C1, label="Channel 1")
 plt.plot(T2, C2, label="Channel 2")

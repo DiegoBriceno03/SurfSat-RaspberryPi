@@ -1,13 +1,13 @@
 """
- *     Filename: picostatus.py
- *     
- *	   Description:
- *			Defines the PICO_STATUS values defined in the PicoStatus.h
- *			C header file.
- * 	   
- *	  @author: mario
- * 
- *    Copyright (C) 2014 - 2017 Pico Technology Ltd. See LICENSE file for terms.
+ *  Filename: picostatus.py
+ *
+ *  Description:
+ *    Defines the PICO_STATUS values defined in the PicoStatus.h
+ *    C header file.
+ *
+ *  @author: mario
+ *
+ *  Copyright (C) 2014 - 2017 Pico Technology Ltd. See LICENSE file for terms.
  *
 """
 
@@ -181,15 +181,15 @@ PICO_STATUS["PICO_SHADOW_CAL_CORRUPT"] = 0x10000007
 
 
 def pico_tag(number):
-    return PICO_STATUS.keys()[PICO_STATUS.values().index(number)]
+	return list(PICO_STATUS.keys())[list(PICO_STATUS.values()).index(number)]
 
 
 def pico_num(tag):
-    try:
-        n = PICO_STATUS[tag]
-    except KeyError:
-        n = PICO_STATUS["PICO_NOT_USED"]
-    return n
+	try:
+		n = PICO_STATUS[tag]
+	except KeyError:
+		n = PICO_STATUS["PICO_NOT_USED"]
+	return n
 
 
 PICO_INFO = dict()

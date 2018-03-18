@@ -1,5 +1,5 @@
-import picoscope.ps2000a as psdrv
-import picoscope.picostatus as st
+import picosdk.ps2000a as psdrv
+import picosdk.picostatus as st
 
 ps = psdrv.Device()
 status = ps.open_unit()

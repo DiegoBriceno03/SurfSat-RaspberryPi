@@ -677,7 +677,7 @@ class PS5000Device(object):
 				status = ldlib.GetUnitInfo(self._chandle, line, c_int16(MAX_INFO_LEN),
 										   byref(required), c_uint32(PICO_INFO["PICO_%s" % tag]))
 				if status == pico_num("PICO_OK"):
-					self.info[tag.lower()] = line.value
+					self.info[tag.lower()] = line.value.decode("ascii")
 		if self.info.variant_info is not None:
 			status = self._set_variant_info()
 		else:

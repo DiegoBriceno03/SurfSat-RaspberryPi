@@ -617,7 +617,7 @@ make_symbol(ldlib, "GetMaxSegments", "ps2000aGetMaxSegments", c_uint32, [c_int16
 Defaults
 """
 INI_LOGIC_VOLTS = 1.5
-variants = (b"2205MSO", b"2206", b"2206A", b"2207", b"2207A", b"2208", b"2208A", b"2408B")
+variants = ("2205MSO", "2206", "2206A", "2207", "2207A", "2208", "2208A", "2408B")
 
 
 class Device(PS5000Device):
@@ -642,35 +642,35 @@ class Device(PS5000Device):
 		self.info.siggen_max = 40000000
 		self.info.has_awg = True
 		self.info.has_ets = False
-		if self.info.variant_info == b"2205MSO":
+		if self.info.variant_info == "2205MSO":
 			self.info.num_channels = 2
 			self.info.num_ports = 2
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2206":
+		elif self.info.variant_info == "2206":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2206A":
+		elif self.info.variant_info == "2206A":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2207":
+		elif self.info.variant_info == "2207":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2207A":
+		elif self.info.variant_info == "2207A":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2208":
+		elif self.info.variant_info == "2208":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2208A":
+		elif self.info.variant_info == "2208A":
 			self.info.num_channels = 2
 			self.info.num_ports = 0
 			self.info.awg_size = 8192
-		elif self.info.variant_info == b"2408B":
+		elif self.info.variant_info == "2408B":
 			self.info.num_channels = 4
 			self.info.num_ports = 0
 			self.info.awg_size = 8192

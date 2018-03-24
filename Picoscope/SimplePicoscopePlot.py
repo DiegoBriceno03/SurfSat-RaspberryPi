@@ -1,14 +1,16 @@
 import matplotlib.pyplot as plt
 from picosdk import ps2000a
 
-samples = 1000
-interval = 1000
+# number of samples per channel
+samples = 1024
+# interval between samples in ns
+interval = 4
 
 if __name__ == "__main__":
 	ps = ps2000a.Device()
 	status = ps.open_unit()
 	if status == ps.m.pico_num("PICO_OK"):
-		time = [interval/float(samples*1000)*i for i in range(samples)]
+		time = [interval*i for i in range(samples)]
 		data = {}
 		for channel in [ps.m.Channels.A, ps.m.Channels.B, ps.m.Channels.C, ps.m.Channels.D]:
 			s, state = ps.get_channel_state(channel=channel)
@@ -26,13 +28,13 @@ if __name__ == "__main__":
 					status, data[channel] = ps.get_buffer_volts(index=index)
 				else: print(ps.m.pico_tag(status))
 			else: print(ps.m.pico_tag(status))
-		#print(data)
+		print(len(time))
 		plt.plot(time, data[ps.m.Channels.A], label='Channel A')
 		plt.plot(time, data[ps.m.Channels.B], label='Channel B')
 		plt.plot(time, data[ps.m.Channels.C], label='Channel C')
 		plt.plot(time, data[ps.m.Channels.D], label='Channel D')
 		plt.title('Picoscope Data')
-		plt.xlabel('Time (s)')
+		plt.xlabel('Time (ns)')
 		plt.ylabel('Voltage (V)')
 		plt.legend()		
 		plt.show()

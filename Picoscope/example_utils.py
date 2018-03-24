@@ -1,20 +1,4 @@
-"""
- *  Filename: pico_test.py
- *
- *  Description:
- *    Example test script.
- *
- *  @author: mario
- *
- *  Copyright (C) 2014 - 2017 Pico Technology Ltd. See LICENSE file for terms.
- *
-"""
-
 import picosdk.picostatus as st
-import numpy as np
-from math import pi, sin
-#from exceptions import IndexError, ZeroDivisionError
-import scipy.signal as signal
 
 colors = ((0, 0, 1, 1), (1, 0, 0, 1), (0, 1, 0, 1), (0.7, 0.7, 0, 1),
 		  (0.66, 0, 1, 1), (0.66, 0.66, 0.66, 1), (0.55, 0.9, 0.9, 1), (1, 0.33, 0.5, 1))

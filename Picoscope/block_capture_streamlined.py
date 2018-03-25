@@ -1,7 +1,7 @@
 from picosdk import ps2000a
 import matplotlib.pyplot as plt
 from example_utils import *
-import os
+import os, time
 from time import strftime
 import numpy as np
 
@@ -24,26 +24,31 @@ def main():
 	triggh = 0.2
 	triggc = ps.m.Channels.A
 	triggd = ps.m.ThresholdDirections.rising
+	voltage_range = ps.m.Ranges.r5v
 
-	dname = ("%s_%s_%s" % (strftime("%Y%m%d_%H%M%S"), ps.info.variant_info, ps.info.batch_and_serial)).replace("/", "_")
+	dname = strftime("%Y%m%d%H%M%S")
 	logdir = os.path.join(outdir, dname)
 	try:
-		if not os.path.exists(logdir):
-			os.mkdir(logdir)
+		if not os.path.exists(logdir): os.mkdir(logdir)
 		logfile = os.path.join(logdir, "block_test.log")
+		datafile = os.path.join(logdir, "block_data.txt")
 	except OSError:
 		logfile = None
+		datafile = None
 		p_warn("Failed to create output directory")
 
 	if logfile is not None:
 		try:
-			logd = open(logfile, "a")
+			logd = open(logfile, "w")
 			p_setlogd(logd)
-		except OSError:
-			logd = None
-			pass
-	else:
-		logd = None
+		except OSError: logd = None
+	else: logd = None
+
+	if datafile is not None:
+		try:
+			datad = open(datafile, "w")
+		except OSError: datad = None
+	else: datad = None
 
 	p_info("Device connected: %s %s" % (ps.info.variant_info, ps.info.batch_and_serial))
 	p_info("Driver: %s" % ps.info.driver_version)
@@ -55,7 +60,7 @@ def main():
 
 		for c in dev_channels:
 			status, state = ps.get_channel_state(channel=c)
-			state.range = ps.m.Ranges.r2v
+			state.range = voltage_range
 			state.enabled = c in channels
 			error_check("Channel %s Setup" % ps.m.Channels.labels[c], ps.set_channel(channel=c, state=state))
 
@@ -65,8 +70,7 @@ def main():
 		if max_samples < 4 * samples:
 			bufflen = int(max_samples / 4)
 			p_warn("Number of raw samples per channel reduced to %d" % bufflen)
-		else:
-			bufflen = samples
+		else: bufflen = samples
 		p_info("Raw samples length: %d" % bufflen)
 
 		p_info("Raw sample interval specified as %.2fns" % interval)
@@ -79,7 +83,9 @@ def main():
 		for c in channels:
 			status, buffers[c] = ps.locate_buffer(channel=c, samples=samples, segment=0, mode=ps.m.RatioModes.raw, downsample=1)
 			error_check("Buffer chan %s mode %s setup" % (ps.m.Channels.labels[c], "raw"), status)
+		p_info("Waiting for trigger")
 		error_check("Collection start", ps.collect_segment(segment=0, interval=interval, overlapped=False))
+		p_info("Trigger detected")
 		data = dict()
 		info = None
 		for c in channels:
@@ -88,6 +94,16 @@ def main():
 				p_info("Effective interval of the trace %.2fns" % info["real_interval"])
 			status, data[c] = ps.get_buffer_data(buffers[c])
 			error_check("Buffer chan %s mode %s data" % (ps.m.Channels.labels[c], "raw"), status)
+
+		if datad is not None:
+			trigger_time = time.time()
+			p_info("Saving data as %s" % os.path.join(logdir, datafile))
+			datad.write("Initial Time: 0x%X\n" % int(trigger_time*1e6))
+			datad.write("Time Interval: 0x%X\n" % int(info["real_interval"]))
+			datad.write("Voltage Ranges (Channel A, B, C, D): 0x%X, 0x%X, 0x%X, 0x%X\n" % (voltage_range, voltage_range, voltage_range, voltage_range))
+			datad.write("Data (Channel A, B, C, D):\n")
+			for a, b, c, d in zip(data[channels[0]], data[channels[1]], data[channels[2]], data[channels[3]]):
+				datad.write("%+05X, %+05X, %+05X, %+05X\n" % (a, b, c, d))
 
 		fig, pts = plt.subplots(1, 1)
 
@@ -121,19 +137,19 @@ def main():
 				li.set_color(triggcolor)
 			p.grid()
 		if logdir is not None:
-			saveas = "block_c%s_m_%s_s%d_t%s.png" % ("".join([str(c) for c in channels]), "raw", bufflen, ("on_V%.2f_H%.2f" % (triggv, triggh)))
+			saveas = "block_plot.png"
 			saveas = os.path.join(logdir, saveas)
-			p_info("Saving graphs as %s" % saveas)
-			try:
-				fig.savefig(saveas, dpi=300)
-			except OSError:
-				p_warn("Failed to write %s" % saveas)
+			p_info("Saving graph as %s" % saveas)
+			try: fig.savefig(saveas, dpi=300)
+			except OSError: p_warn("Failed to write %s" % saveas)
 		plt.show(block=True)
 	finally:
 		if logd is not None:
 			try: logd.close()
 			except OSError: pass
+		if datad is not None:
+			try: datad.close()
+			except OSError: pass
 		ps.close_unit()
 
-if __name__ == "__main__":
-	main()
+if __name__ == "__main__": main()

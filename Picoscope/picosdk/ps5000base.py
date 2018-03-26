@@ -2676,7 +2676,7 @@ class PS5000Device(object):
 		status = self._get_trigger_time_offset(ref_offsets=byref(offt), ref_units=byref(unit), segment=segment)
 		if status != pico_num("PICO_OK"):
 			return status, None
-		return status, time.value * float(pow(10, TimeUnits.nanofactors(unit.value)))
+		return status, offt.value * float(pow(10, TimeUnits.nanofactors(unit.value)))
 
 	def _get_trigger_time_offset(self, ref_offsets, ref_units, segment):
 		return ldlib.GetTriggerTimeOffset(self._chandle, ref_offsets, ref_units, c_uint32(segment))

@@ -1,7 +1,8 @@
-# Pulsed Langmuir Probe Board
+# SurfSat Pulsed Langmuir Probe Board
 
-# 15-pin Micro-D Board Pinout
-# PIN	Signal	Type	Description     Comments
+
+# Pulsed Langmuir Probe 15-pin Micro-D Pinout
+# PIN	Signal	Type	Description	Comments
 
 # 1		VIN		PWR		+6-28V Supply	-
 # 2		VIN		PWR		+6-28V Supply	-
@@ -19,35 +20,62 @@
 # 14	SPARE	I/O		Spare GPIO		3.3 V LVCMOS, 4 mA drive
 # 15	STATUS	Output	Data Valid		3.3 V LVCMOS, 4 mA drive
 
-# science - science mode - single waveform - swept bias - continuous - slow: binary(11100000) - hex(E0)
-# science - science mode - single waveform - swept bias - continuous - fast: binary(11100001) - hex(E1)
-# science - science mode - single waveform - swept bias - pulsed     - slow: binary(11100010) - hex(E2)
-# science - science mode - single waveform - swept bias - pulsed     - fast: binary(11100011) - hex(E3)
-# science - science mode - single waveform - fixed bias - continuous - slow: binary(11100100) - hex(E4)
-# science - science mode - single waveform - fixed bias - continuous - fast: binary(11100101) - hex(E5)
-# science - science mode - single waveform - fixed bias - pulsed     - slow: binary(11100110) - hex(E6)
-# science - science mode - single waveform - fixed bias - pulsed     - fast: binary(11100111) - hex(E7)
-# idle    - science mode - single waveform - fixed bias - continuous - fast: binary(01100101) - hex(65)
-
 import sys
 import serial
 import RPi.GPIO as GPIO
 import time
 
-# a common class for all PLP board actions
 class LangmuirProbe:
 
-	def __init__(self, enable, status, reset, command, idle):
-		self.enable = enable
-		self.status = status
-		self.reset  = reset
-		self.command = command
-		self.idle = idle
-		self.bowl_of_serial()
-		self.setup()
+	def define_constants(self):
+		self.PLP_SPEED_SLOW = 0x00
+		self.PLP_SPEED_FAST = 0x01
 
-	#define serial (UART) and open port
-	def bowl_of_serial(self):
+		self.PLP_OPER_CONTIN = 0x00 << 1
+		self.PLP_OPER_PULSED = 0x01 << 1
+
+		self.PLP_BIAS_SWEPT = 0x00 << 2
+		self.PLP_BIAS_FIXED = 0x01 << 2
+
+		self.PLP_MODE_IDLE = 0x00 << 7
+		self.PLP_MODE_SCI  = 0x01 << 7
+
+	def __init__(self, pin_reset, pin_enable, pin_status):
+		self.define_constants()
+		self.pin_reset = pin_reset
+		self.pin_enable = pin_enable
+		self.pin_status = pin_status
+		self.setup_gpio()
+		self.reset()
+		self.enable()
+		self.ser_init()
+
+	def setup_gpio(self):
+		print("Initializing GPIO...")
+		GPIO.setmode(GPIO.BOARD)
+		GPIO.setup(self.pin_reset, GPIO.OUT)
+		GPIO.setup(self.pin_enable, GPIO.OUT)
+		GPIO.setup(self.pin_status, GPIO.IN)
+
+	def reset(self):
+		print("Resetting FPGA...")
+		GPIO.output(self.pin_reset, GPIO.LOW)
+		time.sleep(0.1)
+		GPIO.output(self.pin_reset, GPIO.HIGH)
+		time.sleep(0.1)
+
+	def enable(self):
+		print("Enabling board...")
+		GPIO.output(self.pin_enable, GPIO.HIGH)
+		time.sleep(0.1)
+
+	def disable(self):
+		print("Disabling board...")
+		GPIO.output(self.pin_enable, GPIO.LOW)
+		time.sleep(0.1)
+
+	def ser_init(self):
+		print("Initializing serial port...")
 		self.ser = serial.Serial(
 			port="/dev/serial0",
 			baudrate = 115200,
@@ -57,74 +85,62 @@ class LangmuirProbe:
 			timeout = None
 		)
 		if not self.ser.is_open:
-			#assumes board is NOT yet powered on
+			print("Failed to open serial port")
 			sys.exit(1)
 
-	#set mode on board to BOARD and setup pins
-	def setup(self):
-		GPIO.setmode(GPIO.BOARD)
-		GPIO.setup(self.enable, GPIO.OUT)
-		GPIO.setup(self.status, GPIO.IN)
-		GPIO.setup(self.reset , GPIO.OUT)
+	def send_command_byte(self, command_byte):
+		command_byte = command_byte | 0x60
+		print("Sending command byte 0x%02X" % command_byte)
+		command_byte = bytes([command_byte])
+		self.ser.write(command_byte)
 
-	#helper function for other methods
-	def disable_board(self):
-		GPIO.output(self.enable, GPIO.LOW)
-
-	#reset the FPGA and enable the board
-	def reset_and_enable(self):
-		GPIO.output(self.reset , GPIO.LOW)
-		GPIO.output(self.reset , GPIO.HIGH)
-		self.disable_board()
-		GPIO.output(self.enable, GPIO.HIGH)
-
-	#check status pin; if bad status, quit
+	def read_data(self):
+		data = self.ser.read(4)
+		current = data[2] << 8 | data[3]
+		voltage = data[0] << 8 | data[1]
+		return (voltage, current)
+		
 	def check_status(self):
-		#return true [3.3V] or false [0V]
-		return (GPIO.input(self.status) == GPIO.HIGH)
-
-	def write_command_byte(self):
-		self.ser.write(self.command)
-
-	def write_idle_byte(self):
-		self.ser.write(self.idle)
-
-	def clean_and_disable(self):
-		self.disable_board()
-		GPIO.cleanup()
+		# Check LP_STATUS_PIN; if bad status, abort
+		if GPIO.input(self.pin_status) == GPIO.HIGH:
+			print("Status check failed, disabling board")
+			self.disable()
+			return False
+		else: return True
 
 if __name__ == "__main__":
 
-	#label pins on py
+	LP_RESET_PIN = 11
 	LP_ENABLE_PIN = 13
 	LP_STATUS_PIN = 16
-	LP_RESET_PIN = 11
-	LP_CMD_BYTE = b'\xE0'
-	LP_IDLE_BYTE = b'\x65'
-	saveFile = open('data.txt','w')
 
-	#create object
-	myPLPboard = LangmuirProbe(LP_ENABLE_PIN, LP_STATUS_PIN, LP_RESET_PIN, LP_CMD_BYTE, LP_IDLE_BYTE)
+	plp = LangmuirProbe(LP_RESET_PIN, LP_ENABLE_PIN, LP_STATUS_PIN)
 
-	#run functions and receive data
-	myPLPboard.reset_and_enable()
+	# File.txt to save data
+	filename = 'data.txt'
+	saveFile = open(filename, 'w')
+	print("Saving data to", filename)
 
-	# maybe make while not if status is active low
-	while myPLPboard.check_status():
-		# PLP command bytes - send once to START collecting data - send again to STOP collecting data
-		myPLPboard.write_command_byte()
-		garbage_value = ser.read(4)
+	plp.send_command_byte(plp.PLP_MODE_SCI | plp.PLP_BIAS_SWEPT | plp.PLP_OPER_CONTIN | plp.PLP_SPEED_SLOW)
+
+	# First four bytes should be header, but is garbage, so ignore.
+	header = plp.read_data()
+
+	starttime = time.time()
+	runtime = 0
+	while runtime < 1 and plp.check_status():
 		try:
-			data = ser.read(4)
-			current = data[2] << 8 | data[3]
-			voltage = data[0] << 8 | data[1]
+			runtime = time.time() - starttime
+			voltage, current = plp.read_data()
 			datastr = "{0:.6f}, {1:x}, {2:x}\n".format(runtime, voltage, current)
-			if data is not b'':
-				saveFile.write(datastr)
+			sys.stdout.write(datastr)
+			saveFile.write(datastr)
 		except KeyboardInterrupt:
 			break
 
 	saveFile.close()
-	# PLP Command Byte - SECOND time sending the byte - STOP collecting continuous  data
-	myPLPboard.write_idle_byte()
-	myPLPboard.clean_and_disable()
+
+	plp.send_command_byte(plp.PLP_MODE_IDLE)
+
+	plp.disable()
+	GPIO.cleanup()

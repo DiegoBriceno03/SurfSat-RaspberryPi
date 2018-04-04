@@ -116,24 +116,21 @@ if __name__ == "__main__":
 
 	plp = LangmuirProbe(LP_RESET_PIN, LP_ENABLE_PIN, LP_STATUS_PIN)
 
-	# File.txt to save data
 	filename = 'data.txt'
 	saveFile = open(filename, 'w')
 	print("Saving data to", filename)
 
-	plp.send_command_byte(plp.PLP_MODE_SCI | plp.PLP_BIAS_SWEPT | plp.PLP_OPER_CONTIN | plp.PLP_SPEED_SLOW)
+	plp.send_command_byte(plp.PLP_MODE_SCI | plp.PLP_BIAS_SWEPT | plp.PLP_OPER_PULSED | plp.PLP_SPEED_SLOW)
 
-	# First four bytes should be header, but is garbage, so ignore.
-	header = plp.read_data()
-
+	totalruntime = 1
+	print("Taking data for %d seconds..." % totalruntime)
 	starttime = time.time()
 	runtime = 0
-	while runtime < 1 and plp.check_status():
+	while runtime < totalruntime and plp.check_status():
 		try:
 			runtime = time.time() - starttime
 			voltage, current = plp.read_data()
 			datastr = "{0:.6f}, {1:x}, {2:x}\n".format(runtime, voltage, current)
-			sys.stdout.write(datastr)
 			saveFile.write(datastr)
 		except KeyboardInterrupt:
 			break

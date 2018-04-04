@@ -85,12 +85,12 @@ class LangmuirProbe:
 			timeout = None
 		)
 		if not self.ser.is_open:
-			print("Failed to open serial port")
+			print("Failed to open serial port!")
 			sys.exit(1)
 
 	def send_command_byte(self, command_byte):
 		command_byte = command_byte | 0x60
-		print("Sending command byte 0x%02X" % command_byte)
+		print("Sending command byte 0x%02X..." % command_byte)
 		command_byte = bytes([command_byte])
 		self.ser.write(command_byte)
 
@@ -103,7 +103,7 @@ class LangmuirProbe:
 	def check_status(self):
 		# Check LP_STATUS_PIN; if bad status, abort
 		if GPIO.input(self.pin_status) == GPIO.HIGH:
-			print("Status check failed, disabling board")
+			print("Status check failed, disabling board!")
 			self.disable()
 			return False
 		else: return True
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
 	filename = 'data.txt'
 	saveFile = open(filename, 'w')
-	print("Saving data to", filename)
+	print("Saving data to '%s'..." % filename)
 
 	plp.send_command_byte(plp.PLP_MODE_SCI | plp.PLP_BIAS_SWEPT | plp.PLP_OPER_PULSED | plp.PLP_SPEED_SLOW)
 

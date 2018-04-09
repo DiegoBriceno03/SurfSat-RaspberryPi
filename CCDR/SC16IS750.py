@@ -1,3 +1,4 @@
+import time
 import smbus
 
 # General Registers
@@ -31,22 +32,41 @@ REG_XOFF1     = 0x06 # XOFF1 Word Register (R/W)
 REG_XOFF2     = 0x07 # XOFF2 Word Register (R/W)
 
 class SC16IS750:
-	def __init__(self, addr, bus):
+	def __init__(self, addr = 0x48, bus = 1, baudrate = 9600, freq = 1843200):
 		self.bus = smbus.SMBus(bus)
 		self.addr = addr
-		
-		self.byte_write(REG_IOCONTROL, 0x80)
+		self.baudrate = baudrate
+		self.freq = freq
+		# Set delay to 2*Tclk as specified by datasheet (page 22 footnote 4)
+		self.delay = 2.0/freq
 
-	def scratchpad_test(self, byte):
-		self.byte_write(REG_SPR, byte)
-		data = self.byte_read(REG_SPR)
-		print("%02X" % data)
+	# Compute required divider values for DLH and DLL registers
+	# Return tuple indicating (boolean success, new values in registers)
+	def set_divisor_latch(self, prescaler = 1):
+		if prescaler not in [1, 4]: prescaler = 1
+		div = round(self.freq/(prescaler*self.baudrate*16))
+		dlh, dll = divmod(div, 0x100)
+		dlhb, dlhv = self.byte_write_verify(REG_DLH, dlh)
+		dllb, dllv = self.byte_write_verify(REG_DLL, dll)
+		return (dlhb and dllb, (dlhv<<8)|dllv)
 
+	# Write I2C byte to specified register and read it back
+	# Return tuple indicating (boolean success, new value in register)
+	def byte_write_verify(self, reg, byte):
+		self.byte_write(reg, byte)
+		value = self.byte_read(reg)
+		return (value == byte, value)
+
+	# Write I2C byte to specified register and wait for value to be written
 	def byte_write(self, reg, byte):
 		self.bus.write_byte_data(self.addr, self.reg_conv(reg), byte)
+		time.sleep(self.delay)
 
+	# Read I2C byte from specified register
+	# Return byte received from SMBus
 	def byte_read(self, reg):
 		return self.bus.read_byte_data(self.addr, self.reg_conv(reg))
-		
+
+	# Convert register address given in datasheet to actual address on chip
 	def reg_conv(self, reg):
 		return reg << 3

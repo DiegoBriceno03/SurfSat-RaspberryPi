@@ -1,0 +1,7 @@
+import SC16IS750
+
+DEVICE_BUS = 1
+DEVICE_ADDR = 0x48
+
+chip = SC16IS750.SC16IS750(DEVICE_ADDR, DEVICE_BUS)
+chip.scratchpad_test(0x3C)

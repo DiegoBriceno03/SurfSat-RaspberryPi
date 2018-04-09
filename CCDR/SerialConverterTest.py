@@ -17,6 +17,7 @@ print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xF
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xAA))
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x81))
 
-# Enable divisor latch bit in LCR register and set appropriate DLH and DLL register values
-print("REG_LCR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_LCR, 0x1D | 0x80))
+# Toggle divisor latch bit in LCR register and set appropriate DLH and DLL register values
+print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = True))
 print("REG_DLH/DLL:   %s 0x%04X" % chip.set_divisor_latch())
+print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))

@@ -1,7 +1,7 @@
 import time
 import smbus
 
-# General Registers
+# General Registers (Require LCR[7] = 0)
 REG_RHR       = 0x00 # Receive Holding Register (R)
 REG_THR       = 0x00 # Transmit Holding Register (W)
 REG_IER       = 0x01 # Interrupt Enable Register (R/W)
@@ -22,9 +22,11 @@ REG_IOINTENA  = 0x0C # I/O Interrupt Enable Register (R/W)
 REG_IOCONTROL = 0x0E # I/O Pin Control Register (R/W)
 REG_EFCR      = 0x0F # Extra Features Register (R/W)
 
-# Special Registers
+# Special Registers (Require LCR[7] = 1 and LCR != 0xBF)
 REG_DLL       = 0x00 # Divisor Latch LSB Register (R/W)
 REG_DLH       = 0x01 # Divisor Latch MSB Register (R/W)
+
+# Enhanced Registers (Require LCR[7] = 1 and LCR = 0xBF)
 REG_EFR       = 0x02 # Enhanced Feature Register (R/W)
 REG_XON1      = 0x04 # XON1 Word Register (R/W)
 REG_XON2      = 0x05 # XON2 Word Register (R/W)
@@ -56,6 +58,14 @@ class SC16IS750:
 		self.byte_write(reg, byte)
 		value = self.byte_read(reg)
 		return (value == byte, value)
+
+	# Toggle which register set is used
+	# If parameter is True, enable special register set, else use general set
+	def define_register_set(self, special):
+		oldvalue = self.byte_read(REG_LCR)
+		if special: newvalue = oldvalue | 0x80
+		else:       newvalue = oldvalue & 0x7F
+		return self.byte_write_verify(REG_LCR, newvalue)
 
 	# Write I2C byte to specified register and wait for value to be written
 	def byte_write(self, reg, byte):

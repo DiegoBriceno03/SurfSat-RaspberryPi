@@ -15,9 +15,20 @@ except OSError: print("REG_IOCONTROL: %s 0x00" % (chip.byte_read(SC16IS750.REG_I
 # Write some test patterns to the scratchpad and verify receipt
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xFF))
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xAA))
-print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x81))
+print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x00))
+
+# Define UART with 7 databits, 1 stopbit, and no parity
+chip.write_LCR(7, 1, SC16IS750.PARITY_NONE)
 
 # Toggle divisor latch bit in LCR register and set appropriate DLH and DLL register values
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = True))
 print("REG_DLH/DLL:   %s 0x%04X" % chip.set_divisor_latch())
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))
+
+#chip.print_IIR()
+#chip.print_LSR()
+#chip.print_MSR()
+
+chip.byte_write(SC16IS750.REG_THR, 0xC1)
+time.sleep(1)
+print("0x%02X" % chip.byte_read(SC16IS750.REG_RHR))

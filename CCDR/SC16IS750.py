@@ -1,3 +1,4 @@
+import sys
 import time
 import smbus
 
@@ -33,14 +34,76 @@ REG_XON2      = 0x05 # XON2 Word Register (R/W)
 REG_XOFF1     = 0x06 # XOFF1 Word Register (R/W)
 REG_XOFF2     = 0x07 # XOFF2 Word Register (R/W)
 
+PARITY_NONE   = 0x00
+PARITY_ODD    = 0x01
+PARITY_EVEN   = 0x02
+
+# Define names for bitfields in IIR, LSR, and MSR registers
+REG_IIR_BITS  = { 0: "Interrupt Status",         1: "Interrupt Priority Bit 0",
+                  2: "Interrupt Priority Bit 1", 3: "Interrupt Priority Bit 2",
+                  4: "Interrupt Priority Bit 3", 5: "Interrupt Priority Bit 4",
+                  6: "FIFO Enable Bit 0",        7: "FIFO Enable Bit 1" }
+
+REG_LSR_BITS  = { 0: "Data In Receiver", 1: "Overrun Error", 2: "Parity Error",      3: "Framing Error",
+                  4: "Break Interrupt",  5: "THR Empty",     6: "THR and TSR Empty", 7: "FIFO Data Error" }
+
+REG_MSR_BITS  = { 0: "Delta CTS", 1: "Delta DSR", 2: "Delta RI", 3: "Delta CD",
+                  4: "CTS",       5: "DSR",       6: "RI",       7: "CD" }
+
 class SC16IS750:
-	def __init__(self, addr = 0x48, bus = 1, baudrate = 9600, freq = 1843200):
+	def __init__(self, addr = 0x48, bus = 1, baudrate = 115200, freq = 1843200):
 		self.bus = smbus.SMBus(bus)
 		self.addr = addr
 		self.baudrate = baudrate
 		self.freq = freq
 		# Set delay to 2*Tclk as specified by datasheet (page 22 footnote 4)
-		self.delay = 2.0/freq
+		self.delay = 1.0e-6
+
+	def print_IIR(self):
+		byte = self.byte_read(REG_IIR)
+		sys.stdout.write("REG_IIR: 0x%02X" % byte)
+		for i in reversed(range(8)):
+			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_IIR_BITS[i])
+		print()
+
+	def print_LSR(self):
+		byte = self.byte_read(REG_LSR)
+		sys.stdout.write("REG_LSR: 0x%02X" % byte)
+		for i in reversed(range(8)):
+			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_LSR_BITS[i])
+		print()
+
+	def print_MSR(self):
+		byte = self.byte_read(REG_MSR)
+		sys.stdout.write("REG_MSR: 0x%02X" % byte)
+		for i in reversed(range(8)):
+			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_MSR_BITS[i])
+		print()
+
+	def write_LCR(self, databits, stopbits, parity):
+		lcr = 0x00
+
+		# LCR[1:0]
+		if   databits == 5: lcr |= 0x00
+		elif databits == 6: lcr |= 0x01
+		elif databits == 7: lcr |= 0x02
+		elif databits == 8: lcr |= 0x03
+		else: return False
+
+		# LCR[2]
+		if   stopbits == 1: lcr |= 0x00
+		elif stopbits == 2: lcr |= 0x04
+		else: return False
+
+		# LCR[5:3]
+		if   parity == PARITY_NONE: lcr |= 0x00
+		elif parity == PARITY_ODD:  lcr |= 0x08
+		elif parity == PARITY_EVEN: lcr |= 0x18
+		else: return False
+
+		success, value = self.byte_write_verify(REG_LCR, lcr)
+		print("REG_LCR:       %s 0x%02X" % (success, value))
+		return success
 
 	# Compute required divider values for DLH and DLL registers
 	# Return tuple indicating (boolean success, new values in registers)

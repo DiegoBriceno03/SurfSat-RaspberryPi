@@ -4,7 +4,7 @@ import SC16IS750
 
 DEVICE_BUS = 1
 DEVICE_ADDR = 0x48
-DEVICE_BAUD = 115200
+DEVICE_BAUD = 9600
 XTAL_FREQ = 1843200
 
 chip = SC16IS750.SC16IS750(DEVICE_ADDR, DEVICE_BUS, DEVICE_BAUD, XTAL_FREQ)
@@ -28,6 +28,9 @@ print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))
 
 # Enable local loopback internally
 #print("REG_MCR:       %s 0x%02X" % chip.enable_local_loopback(True))
+
+# Enable RHR register interrupt
+chip.byte_write(SC16IS750.REG_IER, 0x01)
 
 # Reset TX and RX FIFOs and disable FIFOs
 chip.byte_write(SC16IS750.REG_FCR, 0x06)

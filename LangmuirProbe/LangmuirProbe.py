@@ -25,23 +25,20 @@ import serial
 import RPi.GPIO as GPIO
 import time
 
+SPEED_SLOW = 0x00
+SPEED_FAST = 0x01
+
+OPER_CONTIN = 0x00 << 1
+OPER_PULSED = 0x01 << 1
+
+BIAS_SWEPT = 0x00 << 2
+BIAS_FIXED = 0x01 << 2
+
+MODE_IDLE = 0x00 << 7
+MODE_SCI  = 0x01 << 7
+
 class LangmuirProbe:
-
-	def define_constants(self):
-		self.PLP_SPEED_SLOW = 0x00
-		self.PLP_SPEED_FAST = 0x01
-
-		self.PLP_OPER_CONTIN = 0x00 << 1
-		self.PLP_OPER_PULSED = 0x01 << 1
-
-		self.PLP_BIAS_SWEPT = 0x00 << 2
-		self.PLP_BIAS_FIXED = 0x01 << 2
-
-		self.PLP_MODE_IDLE = 0x00 << 7
-		self.PLP_MODE_SCI  = 0x01 << 7
-
 	def __init__(self, pin_reset, pin_enable, pin_status):
-		self.define_constants()
 		self.pin_reset = pin_reset
 		self.pin_enable = pin_enable
 		self.pin_status = pin_status
@@ -63,6 +60,10 @@ class LangmuirProbe:
 		time.sleep(0.1)
 		GPIO.output(self.pin_reset, GPIO.HIGH)
 		time.sleep(0.1)
+
+	def close(self):
+		GPIO.cleanup()
+		self.ser.close()
 
 	def enable(self):
 		print("Enabling board...")
@@ -107,37 +108,3 @@ class LangmuirProbe:
 			self.disable()
 			return False
 		else: return True
-
-if __name__ == "__main__":
-
-	LP_RESET_PIN = 11
-	LP_ENABLE_PIN = 13
-	LP_STATUS_PIN = 16
-
-	plp = LangmuirProbe(LP_RESET_PIN, LP_ENABLE_PIN, LP_STATUS_PIN)
-
-	filename = 'data.txt'
-	saveFile = open(filename, 'w')
-	print("Saving data to '%s'..." % filename)
-
-	plp.send_command_byte(plp.PLP_MODE_SCI | plp.PLP_BIAS_SWEPT | plp.PLP_OPER_PULSED | plp.PLP_SPEED_SLOW)
-
-	totalruntime = 1
-	print("Taking data for %d seconds..." % totalruntime)
-	starttime = time.time()
-	runtime = 0
-	while runtime < totalruntime and plp.check_status():
-		try:
-			runtime = time.time() - starttime
-			voltage, current = plp.read_data()
-			datastr = "{0:.6f}, {1:x}, {2:x}\n".format(runtime, voltage, current)
-			saveFile.write(datastr)
-		except KeyboardInterrupt:
-			break
-
-	saveFile.close()
-
-	plp.send_command_byte(plp.PLP_MODE_IDLE)
-
-	plp.disable()
-	GPIO.cleanup()

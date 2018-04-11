@@ -34,6 +34,14 @@ REG_XON2      = 0x05 # XON2 Word Register (R/W)
 REG_XOFF1     = 0x06 # XOFF1 Word Register (R/W)
 REG_XOFF2     = 0x07 # XOFF2 Word Register (R/W)
 
+DATABITS_5    = 0x05
+DATABITS_6    = 0x06
+DATABITS_7    = 0x07
+DATABITS_8    = 0x08
+
+STOPBITS_1    = 0x01
+STOPBITS_2    = 0x02
+
 PARITY_NONE   = 0x00
 PARITY_ODD    = 0x01
 PARITY_EVEN   = 0x02
@@ -57,7 +65,7 @@ class SC16IS750:
 		self.baudrate = baudrate
 		self.freq = freq
 		# Set delay to 2*Tclk as specified by datasheet (page 22 footnote 4)
-		self.delay = 1.0e-6
+		self.delay = 2.0/freq
 
 	def print_IIR(self):
 		byte = self.byte_read(REG_IIR)
@@ -84,15 +92,15 @@ class SC16IS750:
 		lcr = 0x00
 
 		# LCR[1:0]
-		if   databits == 5: lcr |= 0x00
-		elif databits == 6: lcr |= 0x01
-		elif databits == 7: lcr |= 0x02
-		elif databits == 8: lcr |= 0x03
+		if   databits == DATABITS_5: lcr |= 0x00
+		elif databits == DATABITS_6: lcr |= 0x01
+		elif databits == DATABITS_7: lcr |= 0x02
+		elif databits == DATABITS_8: lcr |= 0x03
 		else: return False
 
 		# LCR[2]
-		if   stopbits == 1: lcr |= 0x00
-		elif stopbits == 2: lcr |= 0x04
+		if   stopbits == STOPBITS_1: lcr |= 0x00
+		elif stopbits == STOPBITS_2: lcr |= 0x04
 		else: return False
 
 		# LCR[5:3]
@@ -122,13 +130,23 @@ class SC16IS750:
 		value = self.byte_read(reg)
 		return (value == byte, value)
 
-	# Toggle which register set is used
-	# If parameter is True, enable special register set, else use general set
-	def define_register_set(self, special):
-		oldvalue = self.byte_read(REG_LCR)
-		if special: newvalue = oldvalue | 0x80
-		else:       newvalue = oldvalue & 0x7F
+	# Change single bit inside register
+	def enable_register_bit(self, reg, bit, enable):
+		if bit < 0 or bit > 7: return False
+		if enable not in [True, False]: return False
+		
+		oldvalue = self.byte_read(reg)
+		if enable: newvalue = oldvalue |  (0x01 << bit)
+		else:      newvalue = oldvalue & ~(0x01 << bit)
 		return self.byte_write_verify(REG_LCR, newvalue)
+
+	# MCR[4]: True for local loopback enable, False for disable
+	def enable_local_loopback(self, enable):
+		return self.enable_register_bit(REG_MCR, 4, enable)
+
+	# LCR[7]: True for special register set, False for general register set
+	def define_register_set(self, special):
+		return self.enable_register_bit(REG_LCR, 7, special)
 
 	# Write I2C byte to specified register and wait for value to be written
 	def byte_write(self, reg, byte):

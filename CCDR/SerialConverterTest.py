@@ -18,17 +18,28 @@ print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xA
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x00))
 
 # Define UART with 7 databits, 1 stopbit, and no parity
-chip.write_LCR(7, 1, SC16IS750.PARITY_NONE)
+chip.write_LCR(SC16IS750.DATABITS_7, SC16IS750.STOPBITS_1, SC16IS750.PARITY_NONE)
 
 # Toggle divisor latch bit in LCR register and set appropriate DLH and DLL register values
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = True))
 print("REG_DLH/DLL:   %s 0x%04X" % chip.set_divisor_latch())
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))
 
+
 #chip.print_IIR()
 #chip.print_LSR()
 #chip.print_MSR()
 
-chip.byte_write(SC16IS750.REG_THR, 0xC1)
-time.sleep(1)
-print("0x%02X" % chip.byte_read(SC16IS750.REG_RHR))
+# Enable local loopback internally
+print("REG_MCR:       %s 0x%02X" % chip.enable_local_loopback(True))
+
+for i in range(0xA0, 0xAF):
+	chip.byte_write(SC16IS750.REG_THR, i)
+
+print("Waiting for data. Hit Ctrl+C to abort.")
+while True:
+	try: 
+		char = chip.byte_read(SC16IS750.REG_RHR)
+		if char != 0x00: print("0x%02X received!" % char)
+	except KeyboardInterrupt:
+		break

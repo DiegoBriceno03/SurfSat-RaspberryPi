@@ -1,9 +1,10 @@
+import sys
 import time
 import SC16IS750
 
 DEVICE_BUS = 1
 DEVICE_ADDR = 0x48
-DEVICE_BAUD = 9600
+DEVICE_BAUD = 115200
 XTAL_FREQ = 1843200
 
 chip = SC16IS750.SC16IS750(DEVICE_ADDR, DEVICE_BUS, DEVICE_BAUD, XTAL_FREQ)
@@ -17,29 +18,48 @@ print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xF
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xAA))
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x00))
 
-# Define UART with 7 databits, 1 stopbit, and no parity
-chip.write_LCR(SC16IS750.DATABITS_7, SC16IS750.STOPBITS_1, SC16IS750.PARITY_NONE)
+# Define UART with 8 databits, 1 stopbit, and no parity
+chip.write_LCR(SC16IS750.DATABITS_8, SC16IS750.STOPBITS_1, SC16IS750.PARITY_NONE)
 
 # Toggle divisor latch bit in LCR register and set appropriate DLH and DLL register values
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = True))
 print("REG_DLH/DLL:   %s 0x%04X" % chip.set_divisor_latch())
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))
 
+# Enable local loopback internally
+#print("REG_MCR:       %s 0x%02X" % chip.enable_local_loopback(True))
+
+# Reset TX and RX FIFOs and disable FIFOs
+chip.byte_write(SC16IS750.REG_FCR, 0x06)
+time.sleep(2.0/XTAL_FREQ)
+
+# Enable FIFOs
+chip.byte_write(SC16IS750.REG_FCR, 0x01)
+time.sleep(2.0/XTAL_FREQ)
 
 #chip.print_IIR()
 #chip.print_LSR()
 #chip.print_MSR()
 
-# Enable local loopback internally
-print("REG_MCR:       %s 0x%02X" % chip.enable_local_loopback(True))
-
-for i in range(0xA0, 0xAF):
+# Send alphabet and then newline and carriage return
+for i in range(0x41, 0x5B):
 	chip.byte_write(SC16IS750.REG_THR, i)
+chip.byte_write(SC16IS750.REG_THR, 0x0A)
+chip.byte_write(SC16IS750.REG_THR, 0x0D)
 
 print("Waiting for data. Hit Ctrl+C to abort.")
 while True:
 	try: 
-		char = chip.byte_read(SC16IS750.REG_RHR)
-		if char != 0x00: print("0x%02X received!" % char)
+		status = chip.byte_read(SC16IS750.REG_LSR)
+
+		# If LSB of LSR is high, then data available in RHR:
+		if status & 0x01 == 1:
+			char = chip.byte_read(SC16IS750.REG_RHR)
+			print("0x%02X received!" % char)
+		# If MSB of LSR is high, then FIFO data error detected:
+		elif status & 0x80 == 1:
+			print("FIFO data error detected!")
+
+		time.sleep(0.01)
 	except KeyboardInterrupt:
 		break

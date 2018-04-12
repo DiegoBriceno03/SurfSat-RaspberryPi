@@ -18,7 +18,7 @@ REG_TLR       = 0x07 # Trigger Level Register (R/W)
 REG_TXLVL     = 0x08 # Transmit FIFO Level Register (R)
 REG_RXLVL     = 0x09 # Receive FIFO Level Register (R)
 REG_IODIR     = 0x0A # I/O Pin Direction Register (R/W)
-REG_IOSTATES  = 0x0B # I/O Pin States Register (R)
+REG_IOSTATE   = 0x0B # I/O Pin State Register (R)
 REG_IOINTENA  = 0x0C # I/O Interrupt Enable Register (R/W)
 REG_IOCONTROL = 0x0E # I/O Pin Control Register (R/W)
 REG_EFCR      = 0x0F # Extra Features Register (R/W)
@@ -66,6 +66,26 @@ class SC16IS750:
 		self.freq = freq
 		# Set delay to 2*Tclk as specified by datasheet (page 22 footnote 4)
 		self.delay = 2.0/freq
+
+	def print_register(self, reg, prefix):
+		print("%s 0x%02X" % (prefix, self.byte_read(reg)))
+
+	def print_registers(self):
+		self.print_register(REG_RHR,       "0x00 REG_RHR:      ")
+		self.print_register(REG_IER,       "0x01 REG_IER:      ")
+		self.print_register(REG_IIR,       "0x02 REG_IIR:      ")
+		self.print_register(REG_LCR,       "0x03 REG_LCR:      ")
+		self.print_register(REG_MCR,       "0x04 REG_MCR:      ")
+		self.print_register(REG_LSR,       "0x05 REG_LSR:      ")
+		self.print_register(REG_MSR,       "0x06 REG_MSR:      ")
+		self.print_register(REG_SPR,       "0x07 REG_SPR:      ")
+		self.print_register(REG_TXLVL,     "0x08 REG_TXLVL:    ")
+		self.print_register(REG_RXLVL,     "0x09 REG_RXLVL:    ")
+		self.print_register(REG_IODIR,     "0x0A REG_IODIR:    ")
+		self.print_register(REG_IOSTATE,   "0x0B REG_IOSTATE:  ")
+		self.print_register(REG_IOINTENA,  "0x0C REG_IOINTENA: ")
+		self.print_register(REG_IOCONTROL, "0x0E REG_IOCONTROL:")
+		self.print_register(REG_EFCR,      "0x0F REG_EFCR:     ")
 
 	def print_IIR(self):
 		byte = self.byte_read(REG_IIR)

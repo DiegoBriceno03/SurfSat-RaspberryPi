@@ -64,8 +64,7 @@ class SC16IS750:
 		self.addr = addr
 		self.baudrate = baudrate
 		self.freq = freq
-		# Set delay to 2*Tclk as specified by datasheet (page 22 footnote 4)
-		self.delay = 2.0/freq
+		self.delay = 0
 
 	def print_register(self, reg, prefix):
 		print("%s 0x%02X" % (prefix, self.byte_read(reg)))

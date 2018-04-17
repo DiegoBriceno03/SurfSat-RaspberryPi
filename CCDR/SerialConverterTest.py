@@ -1,13 +1,40 @@
 import sys
 import time
 import SC16IS750
+import pigpio
 
-DEVICE_BUS = 1
-DEVICE_ADDR = 0x48
-DEVICE_BAUD = 9600
+# I2C bus identifier
+I2C_BUS = 1
+
+# Interrupt GPIO pins for WTC and PLP comm chips
+PIN_IRQ_WTC = 25 # BCM pin 25, header pin 22
+PIN_IRQ_PLP = 11 # BCM pin 11, header pin 23
+
+# I2C addresses for WTC and PLP comm chips
+I2C_ADDR_WTC = 0x4C
+I2C_ADDR_PLP = 0x4D
+
+# UART baudrates for WTC and PLP comm chips
+I2C_BAUD_WTC = 115200
+I2C_BAUD_PLP = 115200
+
+# Crystal frequency for comm chips
 XTAL_FREQ = 1843200
 
-chip = SC16IS750.SC16IS750(DEVICE_ADDR, DEVICE_BUS, DEVICE_BAUD, XTAL_FREQ)
+def handle_comm(gpio, level, tick):
+	num = chip.byte_read(SC16IS750.REG_RXLVL)
+	if num > 0:
+		if   gpio == PIN_IRQ_WTC: board = "WTC"
+		elif gpio == PIN_IRQ_PLP: board = "PLP"
+		else:                     board = "UNK"
+		sys.stdout.write("%d: " % tick)
+		sys.stdout.write("%2d bytes ready in %s RX FIFO:" % (num, board))
+		for i in range(num):
+			char = chip.byte_read(SC16IS750.REG_RHR)
+			sys.stdout.write(" 0x%02X" % char)
+		print()
+
+chip = SC16IS750.SC16IS750(I2C_ADDR_WTC, I2C_BUS, I2C_BAUD_WTC, XTAL_FREQ)
 
 # Reset chip and handle exception thrown by NACK
 try: chip.byte_write_verify(SC16IS750.REG_IOCONTROL, 0x01 << 3)
@@ -33,6 +60,17 @@ chip.byte_write(SC16IS750.REG_IER, 0x01)
 chip.byte_write(SC16IS750.REG_FCR, 0x06)
 time.sleep(2.0/XTAL_FREQ)
 
+# Initialize pigpio
+pi = pigpio.pi()
+
+# Set up IRQ pins as inputs
+pi.set_mode(PIN_IRQ_WTC, pigpio.INPUT)
+pi.set_mode(PIN_IRQ_PLP, pigpio.INPUT)
+
+# Define callbacks to handle RX from WTC and PLP comm chips
+cb1 = pi.callback(PIN_IRQ_WTC, pigpio.FALLING_EDGE, handle_comm)
+cb2 = pi.callback(PIN_IRQ_PLP, pigpio.FALLING_EDGE, handle_comm)
+
 # Enable FIFOs
 chip.byte_write(SC16IS750.REG_FCR, 0x01)
 time.sleep(2.0/XTAL_FREQ)
@@ -45,20 +83,8 @@ chip.byte_write(SC16IS750.REG_THR, 0x0D)
 
 print("Waiting for data. Hit Ctrl+C to abort.")
 while True:
-	try: 
-		status = chip.byte_read(SC16IS750.REG_LSR)
-
-		# If LSB of LSR is high, then data available in RHR:
-		if status & 0x01 == 1:
-			num = chip.byte_read(SC16IS750.REG_RXLVL)
-			print("%d bytes ready in RX FIFO:" % num)
-			for i in range(num):
-				char = chip.byte_read(SC16IS750.REG_RHR)
-				print("0x%02X received!" % char)
-		# If MSB of LSR is high, then FIFO data error detected:
-		elif status & 0x80 == 1:
-			print("FIFO data error detected!")
-
-		time.sleep(0.001)
+	try:
+		time.sleep(1)
 	except KeyboardInterrupt:
+		pi.stop()
 		break

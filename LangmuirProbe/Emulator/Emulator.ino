@@ -3,6 +3,7 @@ boolean sciencemode = false;
 void setup() {
   // PLP uses 115200 8N1 UART
   Serial.begin(115200);
+  pinMode(13, OUTPUT);
 }
 
 void loop() {
@@ -16,4 +17,5 @@ void serialEvent() {
   // If command byte has a 1 in the MSB, enter science mode
   // Otherwise, enter idle mode and await new command byte
   sciencemode = (inChar & 0x80);
+  digitalWrite(13, sciencemode ? HIGH : LOW);
 }

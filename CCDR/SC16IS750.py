@@ -177,6 +177,16 @@ class SC16IS750:
 	def byte_read(self, reg):
 		return self.bus.read_byte_data(self.addr, self.reg_conv(reg))
 
+	# Read I2C byte from specified register
+	# Return byte received from SMBus
+	def block_read(self, reg, num):
+		block = []
+		while num > 32:
+			block.extend(self.bus.read_i2c_block_data(self.addr, self.reg_conv(reg), 32))
+			num -= 32
+		block.extend(self.bus.read_i2c_block_data(self.addr, self.reg_conv(reg), num))
+		return block
+
 	# Convert register address given in datasheet to actual address on chip
 	def reg_conv(self, reg):
 		return reg << 3

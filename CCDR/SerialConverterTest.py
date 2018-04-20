@@ -29,8 +29,8 @@ def handle_comm(gpio, level, tick):
 		else:                     board = "UNK"
 		sys.stdout.write("%d: " % tick)
 		sys.stdout.write("%2d bytes ready in %s RX FIFO:" % (num, board))
-		for i in range(num):
-			char = chip.byte_read(SC16IS750.REG_RHR)
+		block = chip.block_read(SC16IS750.REG_RHR, num)
+		for char in block:
 			sys.stdout.write(" 0x%02X" % char)
 		print()
 
@@ -76,10 +76,15 @@ chip.byte_write(SC16IS750.REG_FCR, 0x01)
 time.sleep(2.0/XTAL_FREQ)
 
 # Send alphabet and then newline and carriage return
-for i in range(0x41, 0x5B):
-	chip.byte_write(SC16IS750.REG_THR, i)
-chip.byte_write(SC16IS750.REG_THR, 0x0A)
-chip.byte_write(SC16IS750.REG_THR, 0x0D)
+#for i in range(0x41, 0x5B):
+#	chip.byte_write(SC16IS750.REG_THR, i)
+#chip.byte_write(SC16IS750.REG_THR, 0x0A)
+#chip.byte_write(SC16IS750.REG_THR, 0x0D)
+
+# Send MSB=1 to enable emulator, wait, then disable with MSB=0
+chip.byte_write(SC16IS750.REG_THR, 0x80)
+time.sleep(0.01)
+chip.byte_write(SC16IS750.REG_THR, 0x00)
 
 print("Waiting for data. Hit Ctrl+C to abort.")
 while True:

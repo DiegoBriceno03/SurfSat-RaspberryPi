@@ -34,31 +34,81 @@ REG_XON2      = 0x05 # XON2 Word Register (R/W)
 REG_XOFF1     = 0x06 # XOFF1 Word Register (R/W)
 REG_XOFF2     = 0x07 # XOFF2 Word Register (R/W)
 
+# UART Port Data Bit Settings Enumeration
 DATABITS_5    = 0x05
 DATABITS_6    = 0x06
 DATABITS_7    = 0x07
 DATABITS_8    = 0x08
 
+# UART Port Stop Bit Settings Enumeration
 STOPBITS_1    = 0x01
 STOPBITS_2    = 0x02
 
+# UART Port Parity Settings Enumeration
 PARITY_NONE   = 0x00
 PARITY_ODD    = 0x01
 PARITY_EVEN   = 0x02
 
-# Define names for bitfields in IIR, LSR, and MSR registers
-REG_IIR_BITS  = { 0: "Interrupt Status",         1: "Interrupt Priority Bit 0",
-                  2: "Interrupt Priority Bit 1", 3: "Interrupt Priority Bit 2",
-                  4: "Interrupt Priority Bit 3", 5: "Interrupt Priority Bit 4",
-                  6: "FIFO Enable Bit 0",        7: "FIFO Enable Bit 1" }
+# IER Register Interrupt Enable Enumeration
+IER_RX_READY = 0x01
+IER_TX_READY = 0x02
+IER_RX_ERROR = 0x04
+IER_MODEM    = 0x08
+IER_SLEEP    = 0x10
+IER_XOFF     = 0x20
+IER_RTS      = 0x40
+IER_CTS      = 0x80
 
-REG_LSR_BITS  = { 0: "Data In Receiver", 1: "Overrun Error", 2: "Parity Error",      3: "Framing Error",
-                  4: "Break Interrupt",  5: "THR Empty",     6: "THR and TSR Empty", 7: "FIFO Data Error" }
+# IIR Register Interrupt Status Enumeration
+IIR_NONE       = 0x01 # Priority X
+IIR_RX_ERROR   = 0x06 # Priority 1
+IIR_RX_TIMEOUT = 0x0C # Priority 2
+IIR_RX_READY   = 0x04 # Priority 2
+IIR_TX_READY   = 0x02 # Priority 3
+IIR_MODEM      = 0x00 # Priority 4
+IIR_IO         = 0x30 # Priority 5
+IIR_XOFF       = 0x10 # Priority 6
+IIR_CTS_RTS    = 0x20 # Priority 7
 
-REG_MSR_BITS  = { 0: "Delta CTS", 1: "Delta DSR", 2: "Delta RI", 3: "Delta CD",
-                  4: "CTS",       5: "DSR",       6: "RI",       7: "CD" }
+# LSR Register Bits Enumeration
+LSR_RX_DATA_AVAIL   = 0x01
+LSR_OVERFLOW_ERROR  = 0x02
+LSR_PARITY_ERROR    = 0x04
+LSR_FRAMING_ERROR   = 0x08
+LSR_BREAK_INTERRUPT = 0x10
+LSR_THR_EMPTY       = 0x20
+LSR_THR_TSR_EMPTY   = 0x40
+LSR_FIFO_DATA_ERROR = 0x80
+
+# LSR_FIFO_DATA_ERROR is valid for all data in FIFO
+# LSR_BREAK_INTERRUPT, LSR_FRAMING_ERROR, and LSR_PARITY_ERROR are valid only for top byte in FIFO
+# To check error for all RX bytes, must read LSR then read RHR and repeat for all data
+REG_LSR_BITS = {
+	LSR_RX_DATA_AVAIL:   "Data In Receiver",  LSR_OVERFLOW_ERROR:  "Overflow Error",
+	LSR_PARITY_ERROR:    "Parity Error",      LSR_FRAMING_ERROR:   "Framing Error",
+	LSR_BREAK_INTERRUPT: "Break Interrupt",   LSR_THR_EMPTY:       "THR Empty",
+	LSR_THR_TSR_EMPTY:   "THR and TSR Empty", LSR_FIFO_DATA_ERROR: "FIFO Data Error"
+}
+
+# MSR Register Bits Enumeration
+MSR_DELTA_CTS = 0x01
+MSR_DELTA_DSR = 0x02
+MSR_DELTA_RI  = 0x04
+MSR_DELTA_CD  = 0x08
+MSR_CTS       = 0x10
+MSR_DSR       = 0x20
+MSR_RI        = 0x40
+MSR_CD        = 0x80
+
+REG_MSR_BITS = {
+	MSR_DELTA_CTS: "Delta CTS", MSR_DELTA_DSR: "Delta DSR",
+	MSR_DELTA_RI:  "Delta RI",  MSR_DELTA_CD:  "Delta CD",
+	MSR_CTS:       "CTS",       MSR_DSR:       "DSR",
+	MSR_RI:        "RI",        MSR_CD:        "CD"
+}
 
 class SC16IS750:
+
 	def __init__(self, addr = 0x48, bus = 1, baudrate = 115200, freq = 1843200):
 		self.bus = smbus.SMBus(bus)
 		self.addr = addr
@@ -86,25 +136,18 @@ class SC16IS750:
 		self.print_register(REG_IOCONTROL, "0x0E REG_IOCONTROL:")
 		self.print_register(REG_EFCR,      "0x0F REG_EFCR:     ")
 
-	def print_IIR(self):
-		byte = self.byte_read(REG_IIR)
-		sys.stdout.write("REG_IIR: 0x%02X" % byte)
-		for i in reversed(range(8)):
-			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_IIR_BITS[i])
-		print()
-
 	def print_LSR(self):
 		byte = self.byte_read(REG_LSR)
 		sys.stdout.write("REG_LSR: 0x%02X" % byte)
-		for i in reversed(range(8)):
-			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_LSR_BITS[i])
+		for bitmask, desc in sorted(REG_LSR_BITS.items()):
+			if byte & bitmask: sys.stdout.write(", %s" % desc)
 		print()
 
 	def print_MSR(self):
 		byte = self.byte_read(REG_MSR)
 		sys.stdout.write("REG_MSR: 0x%02X" % byte)
-		for i in reversed(range(8)):
-			if byte & (0x01 << i): sys.stdout.write(", %s" % REG_MSR_BITS[i])
+		for bitmask, desc in sorted(REG_MSR_BITS.items()):
+			if byte & bitmask: sys.stdout.write(", %s" % desc)
 		print()
 
 	def write_LCR(self, databits, stopbits, parity):
@@ -149,6 +192,11 @@ class SC16IS750:
 		value = self.byte_read(reg)
 		return (value == byte, value)
 
+	# Retreive interrupt status (IIR[5:0])
+	def get_interrupt_status(self):
+		# Read IIR register and zero out two MSBs
+		return self.byte_read(REG_IIR) & 0x3F
+
 	# Change single bit inside register
 	def enable_register_bit(self, reg, bit, enable):
 		if bit < 0 or bit > 7: return False
@@ -177,8 +225,9 @@ class SC16IS750:
 	def byte_read(self, reg):
 		return self.bus.read_byte_data(self.addr, self.reg_conv(reg))
 
-	# Read I2C byte from specified register
-	# Return byte received from SMBus
+	# Read I2C block from specified register
+	# FIFO is 64 bytes, but SMBus can only read 32 bytes at a time
+	# Return block received from SMBus
 	def block_read(self, reg, num):
 		block = []
 		while num > 32:

@@ -34,12 +34,12 @@ void loop()
 		Serial.print(data);
 
 		// Increment the simulated data variable
-		data += 0x00200040;
+		data += 0x00000001;
 
 	}
 
-	// Send data at a cadence of 1 ms
-	delay(1);
+	// Send data at a cadence of 20 Hz (50 ms)
+	delay(50);
 
 }
 

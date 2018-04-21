@@ -34,51 +34,51 @@ REG_XON2      = 0x05 # XON2 Word Register (R/W)
 REG_XOFF1     = 0x06 # XOFF1 Word Register (R/W)
 REG_XOFF2     = 0x07 # XOFF2 Word Register (R/W)
 
-# UART Port Data Bit Settings Enumeration
-DATABITS_5    = 0x05
-DATABITS_6    = 0x06
-DATABITS_7    = 0x07
-DATABITS_8    = 0x08
+# Section 8.1: Receive Holding Register (RHR)
+# RHR is position zero of the 64 byte RX FIFO
 
-# UART Port Stop Bit Settings Enumeration
-STOPBITS_1    = 0x01
-STOPBITS_2    = 0x02
+# Section 8.2: Transmit Holding Register (THR)
+# THR is position zero of the 64 byte TX FIFO
 
-# UART Port Parity Settings Enumeration
-PARITY_NONE   = 0x00
-PARITY_ODD    = 0x01
-PARITY_EVEN   = 0x02
+# Section 8.3: FIFO Control Register (FCR)
+# TX trigger level may only be modified if EFR[4] is set
+# TX and RX FIFO resets require two XTAL1 clocks
+FCR_RX_TRIGGER_08_BYTES = 0x00 << 6
+FCR_RX_TRIGGER_16_BYTES = 0x01 << 6
+FCR_RX_TRIGGER_56_BYTES = 0x02 << 6
+FCR_RX_TRIGGER_60_BYTES = 0x03 << 6
+FCR_TX_TRIGGER_08_BYTES = 0x00 << 4
+FCR_TX_TRIGGER_16_BYTES = 0x01 << 4
+FCR_TX_TRIGGER_32_BYTES = 0x02 << 4
+FCR_TX_TRIGGER_56_BYTES = 0x03 << 4
+FCR_TX_FIFO_RESET       = 0x01 << 2
+FCR_RX_FIFO_RESET       = 0x01 << 1
+FCR_FIFO_ENABLE         = 0x01 << 0
 
-# IER Register Interrupt Enable Enumeration
-IER_RX_READY = 0x01
-IER_TX_READY = 0x02
-IER_RX_ERROR = 0x04
-IER_MODEM    = 0x08
-IER_SLEEP    = 0x10
-IER_XOFF     = 0x20
-IER_RTS      = 0x40
-IER_CTS      = 0x80
+# Section 8.4: Line Control Register (LCR)
+LCR_DIVISOR_ENABLE = 0x01 << 7
+LCR_BREAK_CONTROL  = 0x01 << 6
+LCR_PARITY_NONE    = 0x00 << 3
+LCR_PARITY_ODD     = 0x01 << 3
+LCR_PARITY_EVEN    = 0x03 << 3
+LCR_PARITY_HIGH    = 0x05 << 3
+LCR_PARITY_LOW     = 0x07 << 3
+LCR_STOPBITS_1     = 0x00 << 2
+LCR_STOPBITS_2     = 0x01 << 2
+LCR_DATABITS_5     = 0x00 << 0
+LCR_DATABITS_6     = 0x01 << 0
+LCR_DATABITS_7     = 0x02 << 0
+LCR_DATABITS_8     = 0x03 << 0
 
-# IIR Register Interrupt Status Enumeration
-IIR_NONE       = 0x01 # Priority X
-IIR_RX_ERROR   = 0x06 # Priority 1
-IIR_RX_TIMEOUT = 0x0C # Priority 2
-IIR_RX_READY   = 0x04 # Priority 2
-IIR_TX_READY   = 0x02 # Priority 3
-IIR_MODEM      = 0x00 # Priority 4
-IIR_IO         = 0x30 # Priority 5
-IIR_XOFF       = 0x10 # Priority 6
-IIR_CTS_RTS    = 0x20 # Priority 7
-
-# LSR Register Bits Enumeration
-LSR_RX_DATA_AVAIL   = 0x01
-LSR_OVERFLOW_ERROR  = 0x02
-LSR_PARITY_ERROR    = 0x04
-LSR_FRAMING_ERROR   = 0x08
-LSR_BREAK_INTERRUPT = 0x10
-LSR_THR_EMPTY       = 0x20
-LSR_THR_TSR_EMPTY   = 0x40
-LSR_FIFO_DATA_ERROR = 0x80
+# Section 8.5: Line Status Register (LSR)
+LSR_RX_DATA_AVAIL   = 0x01 << 0
+LSR_OVERFLOW_ERROR  = 0x01 << 1
+LSR_PARITY_ERROR    = 0x01 << 2
+LSR_FRAMING_ERROR   = 0x01 << 3
+LSR_BREAK_INTERRUPT = 0x01 << 4
+LSR_THR_EMPTY       = 0x01 << 5
+LSR_THR_TSR_EMPTY   = 0x01 << 6
+LSR_FIFO_DATA_ERROR = 0x01 << 7
 
 # LSR_FIFO_DATA_ERROR is valid for all data in FIFO
 # LSR_BREAK_INTERRUPT, LSR_FRAMING_ERROR, and LSR_PARITY_ERROR are valid only for top byte in FIFO
@@ -90,15 +90,26 @@ REG_LSR_BITS = {
 	LSR_THR_TSR_EMPTY:   "THR and TSR Empty", LSR_FIFO_DATA_ERROR: "FIFO Data Error"
 }
 
-# MSR Register Bits Enumeration
-MSR_DELTA_CTS = 0x01
-MSR_DELTA_DSR = 0x02
-MSR_DELTA_RI  = 0x04
-MSR_DELTA_CD  = 0x08
-MSR_CTS       = 0x10
-MSR_DSR       = 0x20
-MSR_RI        = 0x40
-MSR_CD        = 0x80
+# Section 8.6: Modem Control Register (MCR)
+# MCR[7:5] and MCR[2] can only be modified if EFR[4] is set
+MCR_CLOCK_DIV_1 = 0x00 << 7
+MCR_CLOCK_DIV_4 = 0x01 << 7
+MCR_IRDA        = 0x01 << 6
+MCR_XON_ANY     = 0x01 << 5
+MCR_LOOPBACK    = 0x01 << 4
+MCR_TCR_TLR     = 0x01 << 2
+MCR_RTS         = 0x01 << 1
+MCR_DTR         = 0x01 << 0 # Not available on 740 variant
+
+# Section 8.7: Modem Status Register (MSR)
+MSR_CD        = 0x01 << 7 # Not available on 740 variant
+MSR_RI        = 0x01 << 6 # Not available on 740 variant
+MSR_DSR       = 0x01 << 5 # Not available on 740 variant
+MSR_CTS       = 0x01 << 4
+MSR_DELTA_CD  = 0x01 << 3 # Not available on 740 variant
+MSR_DELTA_RI  = 0x01 << 2 # Not available on 740 variant
+MSR_DELTA_DSR = 0x01 << 1 # Not available on 740 variant
+MSR_DELTA_CTS = 0x01 << 0
 
 REG_MSR_BITS = {
 	MSR_DELTA_CTS: "Delta CTS", MSR_DELTA_DSR: "Delta DSR",
@@ -106,6 +117,33 @@ REG_MSR_BITS = {
 	MSR_CTS:       "CTS",       MSR_DSR:       "DSR",
 	MSR_RI:        "RI",        MSR_CD:        "CD"
 }
+
+# Section 8.8: Scratch Pad Register (SPR)
+
+# Section 8.9: Interrupt Enable Register (IIR)
+# IER[7:4] can only be modified if EFR[4] is set
+IER_CTS      = 0x01 << 7
+IER_RTS      = 0x01 << 6
+IER_XOFF     = 0x01 << 5
+IER_SLEEP    = 0x01 << 4
+IER_MODEM    = 0x01 << 3 # Not available on 740 variant
+IER_RX_ERROR = 0x01 << 2
+IER_TX_READY = 0x01 << 1
+IER_RX_READY = 0x01 << 0
+
+# Section 8.10: Interrupt Identification Register (IIR)
+# Modem interrupt status must be read via MSR register
+# GPIO interrupt status must be read via IOState register
+IIR_FIFO_ENABLE = 0x80 # Mirrors FCR[0]
+IIR_NONE        = 0x01 # Priority X
+IIR_RX_ERROR    = 0x06 # Priority 1
+IIR_RX_TIMEOUT  = 0x0C # Priority 2
+IIR_RX_READY    = 0x04 # Priority 2
+IIR_TX_READY    = 0x02 # Priority 3
+IIR_MODEM       = 0x00 # Priority 4 # Not available on 740 variant
+IIR_GPIO        = 0x30 # Priority 5 # Not available on 740 variant
+IIR_XOFF        = 0x10 # Priority 6
+IIR_CTS_RTS     = 0x20 # Priority 7
 
 class SC16IS750:
 
@@ -153,31 +191,6 @@ class SC16IS750:
 		for bitmask, desc in sorted(REG_MSR_BITS.items()):
 			if byte & bitmask: sys.stdout.write(", %s" % desc)
 		print()
-
-	def write_LCR(self, databits, stopbits, parity):
-		lcr = 0x00
-
-		# LCR[1:0]
-		if   databits == DATABITS_5: lcr |= 0x00
-		elif databits == DATABITS_6: lcr |= 0x01
-		elif databits == DATABITS_7: lcr |= 0x02
-		elif databits == DATABITS_8: lcr |= 0x03
-		else: return False
-
-		# LCR[2]
-		if   stopbits == STOPBITS_1: lcr |= 0x00
-		elif stopbits == STOPBITS_2: lcr |= 0x04
-		else: return False
-
-		# LCR[5:3]
-		if   parity == PARITY_NONE: lcr |= 0x00
-		elif parity == PARITY_ODD:  lcr |= 0x08
-		elif parity == PARITY_EVEN: lcr |= 0x18
-		else: return False
-
-		success, value = self.byte_write_verify(REG_LCR, lcr)
-		print("REG_LCR:       %s 0x%02X" % (success, value))
-		return success
 
 	# Compute required divider values for DLH and DLL registers
 	# Return tuple indicating (boolean success, new values in registers)

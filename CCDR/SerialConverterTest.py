@@ -30,7 +30,7 @@ INTERRUPTS = {
 	SC16IS750.IIR_RX_READY:   "RX Ready",
 	SC16IS750.IIR_TX_READY:   "TX Ready",
 	SC16IS750.IIR_MODEM:      "Modem State Change",
-	SC16IS750.IIR_IO:         "IO Pins State Change",
+	SC16IS750.IIR_GPIO:       "IO Pins State Change",
 	SC16IS750.IIR_XOFF:       "Xoff Character Received",
 	SC16IS750.IIR_CTS_RTS:    "CTS or RTS State Change"
 }
@@ -44,7 +44,7 @@ def handle_comm(gpio, level, tick):
 	irqstatus = chip.get_interrupt_status()
 	sys.stdout.write("0x%02X: %s" % (irqstatus, INTERRUPTS.get(irqstatus, "Unknown Interrupt")))
 
-	if   irqstatus == SC16IS750.IIR_RX_ERROR:
+	if irqstatus == SC16IS750.IIR_RX_ERROR:
 		lsr = chip.byte_read(SC16IS750.REG_LSR)
 		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  sys.stdout.write(" (Overflow)")
 		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: sys.stdout.write(" (FIFO Error)")
@@ -84,27 +84,30 @@ print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xA
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0x00))
 
 # Define UART with 8 databits, 1 stopbit, and no parity
-chip.write_LCR(SC16IS750.DATABITS_8, SC16IS750.STOPBITS_1, SC16IS750.PARITY_NONE)
+lcr = SC16IS750.LCR_DATABITS_8 | SC16IS750.LCR_STOPBITS_1 | SC16IS750.LCR_PARITY_NONE
+print("REG_LCR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_LCR, lcr))
 
 # Toggle divisor latch bit in LCR register and set appropriate DLH and DLL register values
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = True))
 print("REG_DLH/DLL:   %s 0x%04X" % chip.set_divisor_latch())
 print("REG_LCR:       %s 0x%02X" % chip.define_register_set(special = False))
 
-# Enable interrupts
-chip.byte_write(SC16IS750.REG_IER, SC16IS750.IER_RX_ERROR | SC16IS750.IER_RX_READY)
+# Enable RX error and RX ready interrupts
+ier = SC16IS750.IER_RX_ERROR | SC16IS750.IER_RX_READY
+print("REG_IER:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_IER, ier))
 
 # Reset TX and RX FIFOs and disable FIFOs
-chip.byte_write(SC16IS750.REG_FCR, 0x06)
+fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET
+chip.byte_write(SC16IS750.REG_FCR, fcr)
 time.sleep(2.0/XTAL_FREQ)
 
 # Define callbacks to handle RX from WTC and PLP comm chips
 cb1 = pi.callback(PIN_IRQ_WTC, pigpio.FALLING_EDGE, handle_comm)
 #cb2 = pi.callback(PIN_IRQ_PLP, pigpio.FALLING_EDGE, handle_comm)
 
-# Enable FIFOs
-chip.byte_write(SC16IS750.REG_FCR, 0x01)
-time.sleep(2.0/XTAL_FREQ)
+# Enable FIFOs and set RX trigger level to 8 bytes
+fcr = SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_08_BYTES
+chip.byte_write(SC16IS750.REG_FCR, fcr)
 
 # Send alphabet and then newline and carriage return
 #for i in range(0x41, 0x5B):
@@ -116,12 +119,11 @@ print("Waiting for data. Hit Ctrl+C to abort.")
 
 # Send MSB=1 to enable emulator, wait, then disable with MSB=0
 chip.byte_write(SC16IS750.REG_THR, 0x80)
-time.sleep(0.03)
+time.sleep(0.01)
 chip.byte_write(SC16IS750.REG_THR, 0x00)
 
 while True:
 	try:
-		print("Bytes available: %d" % chip.byte_read(SC16IS750.REG_RXLVL))
 		while len(data) > 0:
 			tick, block = data.pop(0)
 			sys.stdout.write("%d (%d bytes):" % (tick, len(block)))

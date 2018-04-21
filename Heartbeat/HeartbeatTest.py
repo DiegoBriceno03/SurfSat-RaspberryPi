@@ -1,5 +1,6 @@
 # Be sure to have pigpiod running as root to handle requests!
 
+import sys
 import time
 import pigpio
 
@@ -69,11 +70,20 @@ while True:
 		timetimetest = int(time.time()*1e6)
 		ticktimetest = ticktime["overflows"] * 0xFFFFFFFF + ticktimetest- ticktime["zerotick"] + ticktime["inittime"]
 
-		print("0x%010X 0x%010X %d" % (ticktimetest, timetimetest, timetimetest-ticktimetest))
+		sys.stdout.write("0x%010X 0x%010X %+08d " % (ticktimetest, timetimetest, ticktimetest-timetimetest))
+		sys.stdout.flush()
 
-		time.sleep(1)
+		for i in range(1,5*6+1):
+			time.sleep(10)
+			sys.stdout.write(".")
+			if i % 6 == 0:
+				sys.stdout.write(" ")
+			sys.stdout.flush()
+
+		print()
 
 	except KeyboardInterrupt:
+		print()
 		break
 
 cb.cancel()

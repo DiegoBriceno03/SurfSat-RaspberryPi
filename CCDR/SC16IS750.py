@@ -1,6 +1,6 @@
 import sys
 import time
-import smbus
+import pigpio
 
 # General Registers (Require LCR[7] = 0)
 REG_RHR       = 0x00 # Receive Holding Register (R)
@@ -109,12 +109,16 @@ REG_MSR_BITS = {
 
 class SC16IS750:
 
-	def __init__(self, addr = 0x48, bus = 1, baudrate = 115200, freq = 1843200):
-		self.bus = smbus.SMBus(bus)
+	def __init__(self, pi, addr = 0x48, bus = 1, baudrate = 115200, freq = 1843200):
+		self.pi = pi
+		self.i2c = pi.i2c_open(bus, addr)
 		self.addr = addr
 		self.baudrate = baudrate
 		self.freq = freq
 		self.delay = 0
+
+	def close(self):
+		self.pi.i2c_close(self.i2c)
 
 	def print_register(self, reg, prefix):
 		print("%s 0x%02X" % (prefix, self.byte_read(reg)))
@@ -217,13 +221,13 @@ class SC16IS750:
 
 	# Write I2C byte to specified register and wait for value to be written
 	def byte_write(self, reg, byte):
-		self.bus.write_byte_data(self.addr, self.reg_conv(reg), byte)
+		self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
 		time.sleep(self.delay)
 
 	# Read I2C byte from specified register
 	# Return byte received from SMBus
 	def byte_read(self, reg):
-		return self.bus.read_byte_data(self.addr, self.reg_conv(reg))
+		return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
 
 	# Read I2C block from specified register
 	# FIFO is 64 bytes, but SMBus can only read 32 bytes at a time
@@ -231,9 +235,13 @@ class SC16IS750:
 	def block_read(self, reg, num):
 		block = []
 		while num > 32:
-			block.extend(self.bus.read_i2c_block_data(self.addr, self.reg_conv(reg), 32))
-			num -= 32
-		block.extend(self.bus.read_i2c_block_data(self.addr, self.reg_conv(reg), num))
+			n, d = self.pi.i2c_read_i2c_block_data(self.i2c, self.reg_conv(reg), 32)
+			block.extend(d)
+			num -= n
+		n, d = self.pi.i2c_read_i2c_block_data(self.i2c, self.reg_conv(reg), num)
+		block.extend(d)
+		num -= n
+		if num != 0: print("ERROR")
 		return block
 
 	# Convert register address given in datasheet to actual address on chip

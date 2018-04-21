@@ -58,11 +58,25 @@ def handle_comm(gpio, level, tick):
 	data.append([tick, block])
 	print()
 
-chip = SC16IS750.SC16IS750(I2C_ADDR_WTC, I2C_BUS, I2C_BAUD_WTC, XTAL_FREQ)
+# Initialize pigpio
+pi = pigpio.pi()
+
+# Set up IRQ pins as inputs
+pi.set_mode(PIN_IRQ_WTC, pigpio.INPUT)
+pi.set_mode(PIN_IRQ_PLP, pigpio.INPUT)
+
+# Initialize SC16IS750 chip
+chip = SC16IS750.SC16IS750(pi, I2C_ADDR_WTC, I2C_BUS, I2C_BAUD_WTC, XTAL_FREQ)
 
 # Reset chip and handle exception thrown by NACK
 try: chip.byte_write_verify(SC16IS750.REG_IOCONTROL, 0x01 << 3)
-except OSError: print("REG_IOCONTROL: %s 0x00" % (chip.byte_read(SC16IS750.REG_IOCONTROL) == 0x00))
+#except OSError: print("REG_IOCONTROL: %s 0x00" % (chip.byte_read(SC16IS750.REG_IOCONTROL) == 0x00))
+except pigpio.error as e:
+	if e.value == pigpio.error_text(pigpio.PI_I2C_WRITE_FAILED):
+		print("REG_IOCONTROL: %s 0x00" % (chip.byte_read(SC16IS750.REG_IOCONTROL) == 0x00))
+	else:
+		print("Error: %s" % e)
+		sys.exit(1)
 
 # Write some test patterns to the scratchpad and verify receipt
 print("REG_SPR:       %s 0x%02X" % chip.byte_write_verify(SC16IS750.REG_SPR, 0xFF))
@@ -84,13 +98,6 @@ chip.byte_write(SC16IS750.REG_IER, SC16IS750.IER_RX_ERROR | SC16IS750.IER_RX_REA
 chip.byte_write(SC16IS750.REG_FCR, 0x06)
 time.sleep(2.0/XTAL_FREQ)
 
-# Initialize pigpio
-pi = pigpio.pi()
-
-# Set up IRQ pins as inputs
-pi.set_mode(PIN_IRQ_WTC, pigpio.INPUT)
-pi.set_mode(PIN_IRQ_PLP, pigpio.INPUT)
-
 # Define callbacks to handle RX from WTC and PLP comm chips
 cb1 = pi.callback(PIN_IRQ_WTC, pigpio.FALLING_EDGE, handle_comm)
 #cb2 = pi.callback(PIN_IRQ_PLP, pigpio.FALLING_EDGE, handle_comm)
@@ -109,11 +116,12 @@ print("Waiting for data. Hit Ctrl+C to abort.")
 
 # Send MSB=1 to enable emulator, wait, then disable with MSB=0
 chip.byte_write(SC16IS750.REG_THR, 0x80)
-time.sleep(0.01)
+time.sleep(0.03)
 chip.byte_write(SC16IS750.REG_THR, 0x00)
 
 while True:
 	try:
+		print("Bytes available: %d" % chip.byte_read(SC16IS750.REG_RXLVL))
 		while len(data) > 0:
 			tick, block = data.pop(0)
 			sys.stdout.write("%d (%d bytes):" % (tick, len(block)))
@@ -122,5 +130,6 @@ while True:
 			print()
 		time.sleep(1)
 	except KeyboardInterrupt:
+		chip.close()
 		pi.stop()
 		break

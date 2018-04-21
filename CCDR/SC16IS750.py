@@ -189,6 +189,10 @@ EFCR_TX_DISABLE     = 0x01 << 2
 EFCR_RX_DISABLE     = 0x01 << 1
 EFCR_RS485_ENABLE   = 0x01 << 0
 
+# Define collections of read and write only registers
+REGS_READ_ONLY  = [REG_RHR, REG_IIR, REG_LSR, REG_MSR, REG_TXLVL, REG_RXLVL]
+REGS_WRITE_ONLY = [REG_THR, REG_FCR]
+
 class SC16IS750:
 
 	def __init__(self, pi, i2cbus = 1, i2caddr = 0x48, xtalfreq = 1843200, baudrate = 115200, databits = LCR_DATABITS_8, stopbits = LCR_STOPBITS_1, parity = LCR_PARITY_NONE):
@@ -265,13 +269,6 @@ class SC16IS750:
 		dllb, dllv = self.byte_write_verify(REG_DLL, dll)
 		return (dlhb and dllb, (dlhv<<8)|dllv)
 
-	# Write I2C byte to specified register and read it back
-	# Return tuple indicating (boolean success, new value in register)
-	def byte_write_verify(self, reg, byte):
-		self.byte_write(reg, byte)
-		value = self.byte_read(reg)
-		return (value == byte, value)
-
 	# Retreive interrupt status (IIR[5:0])
 	def get_interrupt_status(self):
 		# Read IIR register and zero out two MSBs
@@ -295,14 +292,27 @@ class SC16IS750:
 	def define_register_set(self, special):
 		return self.enable_register_bit(REG_LCR, 7, special)
 
+	# Write I2C byte to specified register and read it back
+	# Return tuple indicating (boolean success, new value in register)
+	def byte_write_verify(self, reg, byte):
+		if reg not in REGS_WRITE_ONLY:
+			self.byte_write(reg, byte)
+			value = self.byte_read(reg)
+			return (value == byte, value)
+		else: raise ValueError("Attemped to verify write on write only register!")
+
 	# Write I2C byte to specified register
 	def byte_write(self, reg, byte):
-		self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
+		if reg not in REGS_READ_ONLY:
+			self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
+		else: raise ValueError("Attempted to write to read only register!")
 
 	# Read I2C byte from specified register
 	# Return byte received from driver
 	def byte_read(self, reg):
-		return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
+		if reg not in REGS_WRITE_ONLY:
+			return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
+		else: raise ValueError("Attempted to read from write only register!")
 
 	# Read I2C block from specified register
 	# FIFO is 64 bytes, but can only read 32 bytes at a time

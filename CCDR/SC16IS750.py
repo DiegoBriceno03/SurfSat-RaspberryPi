@@ -85,8 +85,8 @@ LSR_FIFO_DATA_ERROR = 0x01 << 7
 
 # Section 8.6: Modem Control Register (MCR)
 # MCR[7:5] and MCR[2] can only be modified if EFR[4] is set
-MCR_CLOCK_DIV_1 = 0x00 << 7
-MCR_CLOCK_DIV_4 = 0x01 << 7
+MCR_PRESCALER_1 = 0x00 << 7
+MCR_PRESCALER_4 = 0x01 << 7
 MCR_IRDA        = 0x01 << 6
 MCR_XON_ANY     = 0x01 << 5
 MCR_LOOPBACK    = 0x01 << 4
@@ -229,7 +229,7 @@ class SC16IS750:
 	# Initialize UART settings
 	def init_uart(self):
 		s1, v1 = self.byte_write_verify(REG_LCR, LCR_DIVISOR_ENABLE)
-		s2, v2 = self.set_divisor_latch()
+		s2, v2 = self.set_divisor_latch(MCR_PRESCALER_1)
 		lcr = self.databits | self.stopbits | self.parity
 		s3, v3 = self.byte_write_verify(REG_LCR, lcr)
 		if not (s1 and s2 and s3):
@@ -257,8 +257,8 @@ class SC16IS750:
 
 	# Compute required divider values for DLH and DLL registers
 	# Return tuple indicating (boolean success, new values in registers)
-	def set_divisor_latch(self, prescaler = 1):
-		if prescaler not in [1, 4]: prescaler = 1
+	def set_divisor_latch(self, prescaler = MCR_PRESCALER_1):
+		prescaler = 4 if prescaler == MCR_PRESCALER_4 else 1
 		div = round(self.xtalfreq/(prescaler*self.baudrate*16))
 		dlh, dll = divmod(div, 0x100)
 		dlhb, dlhv = self.byte_write_verify(REG_DLH, dlh)

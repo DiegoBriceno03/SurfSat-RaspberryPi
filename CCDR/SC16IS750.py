@@ -9,7 +9,7 @@ REG_IER       = 0x01 # Interrupt Enable Register (R/W)
 REG_IIR       = 0x02 # Interrupt Identification Register (R)
 REG_FCR       = 0x02 # FIFO Control Register (W)
 REG_LCR       = 0x03 # Line Control Register (R/W)
-REG_MCR       = 0x04 # Modem Control Register (R/W
+REG_MCR       = 0x04 # Modem Control Register (R/W)
 REG_LSR       = 0x05 # Line Status Register (R)
 REG_MSR       = 0x06 # Modem Status Register (R)
 REG_SPR       = 0x07 # Scratchpad Register (R/W)
@@ -71,6 +71,9 @@ LCR_DATABITS_7     = 0x02 << 0
 LCR_DATABITS_8     = 0x03 << 0
 
 # Section 8.5: Line Status Register (LSR)
+# LSR_FIFO_DATA_ERROR is valid for all data in FIFO
+# LSR_BREAK_INTERRUPT, LSR_FRAMING_ERROR, and LSR_PARITY_ERROR are valid only for top byte in FIFO
+# To check error for all RX bytes, must read LSR then read RHR and repeat for all data
 LSR_RX_DATA_AVAIL   = 0x01 << 0
 LSR_OVERFLOW_ERROR  = 0x01 << 1
 LSR_PARITY_ERROR    = 0x01 << 2
@@ -79,16 +82,6 @@ LSR_BREAK_INTERRUPT = 0x01 << 4
 LSR_THR_EMPTY       = 0x01 << 5
 LSR_THR_TSR_EMPTY   = 0x01 << 6
 LSR_FIFO_DATA_ERROR = 0x01 << 7
-
-# LSR_FIFO_DATA_ERROR is valid for all data in FIFO
-# LSR_BREAK_INTERRUPT, LSR_FRAMING_ERROR, and LSR_PARITY_ERROR are valid only for top byte in FIFO
-# To check error for all RX bytes, must read LSR then read RHR and repeat for all data
-REG_LSR_BITS = {
-	LSR_RX_DATA_AVAIL:   "Data In Receiver",  LSR_OVERFLOW_ERROR:  "Overflow Error",
-	LSR_PARITY_ERROR:    "Parity Error",      LSR_FRAMING_ERROR:   "Framing Error",
-	LSR_BREAK_INTERRUPT: "Break Interrupt",   LSR_THR_EMPTY:       "THR Empty",
-	LSR_THR_TSR_EMPTY:   "THR and TSR Empty", LSR_FIFO_DATA_ERROR: "FIFO Data Error"
-}
 
 # Section 8.6: Modem Control Register (MCR)
 # MCR[7:5] and MCR[2] can only be modified if EFR[4] is set
@@ -110,13 +103,6 @@ MSR_DELTA_CD  = 0x01 << 3 # Not available on 740 variant
 MSR_DELTA_RI  = 0x01 << 2 # Not available on 740 variant
 MSR_DELTA_DSR = 0x01 << 1 # Not available on 740 variant
 MSR_DELTA_CTS = 0x01 << 0
-
-REG_MSR_BITS = {
-	MSR_DELTA_CTS: "Delta CTS", MSR_DELTA_DSR: "Delta DSR",
-	MSR_DELTA_RI:  "Delta RI",  MSR_DELTA_CD:  "Delta CD",
-	MSR_CTS:       "CTS",       MSR_DSR:       "DSR",
-	MSR_RI:        "RI",        MSR_CD:        "CD"
-}
 
 # Section 8.8: Scratch Pad Register (SPR)
 
@@ -147,13 +133,17 @@ IIR_CTS_RTS     = 0x20 # Priority 7
 
 class SC16IS750:
 
-	def __init__(self, pi, addr = 0x48, bus = 1, baudrate = 115200, freq = 1843200):
+	def __init__(self, pi, i2cbus = 1, i2caddr = 0x48, xtalfreq = 1843200, baudrate = 115200, databits = LCR_DATABITS_8, stopbits = LCR_STOPBITS_1, parity = LCR_PARITY_NONE):
 		self.pi = pi
-		self.i2c = pi.i2c_open(bus, addr)
-		self.addr = addr
+		self.i2c = pi.i2c_open(i2cbus, i2caddr)
+		self.xtalfreq = xtalfreq
 		self.baudrate = baudrate
-		self.freq = freq
-		self.delay = 0
+		self.databits = databits
+		self.stopbits = stopbits
+		self.parity = parity
+
+		self.reset()
+		self.init_uart()
 
 	def close(self):
 		self.pi.i2c_close(self.i2c)
@@ -178,25 +168,40 @@ class SC16IS750:
 		self.print_register(REG_IOCONTROL, "0x0E REG_IOCONTROL:")
 		self.print_register(REG_EFCR,      "0x0F REG_EFCR:     ")
 
-	def print_LSR(self):
-		byte = self.byte_read(REG_LSR)
-		sys.stdout.write("REG_LSR: 0x%02X" % byte)
-		for bitmask, desc in sorted(REG_LSR_BITS.items()):
-			if byte & bitmask: sys.stdout.write(", %s" % desc)
-		print()
+	# Initialize UART settings
+	def init_uart(self):
+		s1, v1 = self.byte_write_verify(REG_LCR, LCR_DIVISOR_ENABLE)
+		s2, v2 = self.set_divisor_latch()
+		lcr = self.databits | self.stopbits | self.parity
+		s3, v3 = self.byte_write_verify(REG_LCR, lcr)
+		if not (s1 and s2 and s3):
+			print("Error setting up UART port!")
+			sys.exit(1)
 
-	def print_MSR(self):
-		byte = self.byte_read(REG_MSR)
-		sys.stdout.write("REG_MSR: 0x%02X" % byte)
-		for bitmask, desc in sorted(REG_MSR_BITS.items()):
-			if byte & bitmask: sys.stdout.write(", %s" % desc)
-		print()
+	# Reset chip and handle exception thrown by NACK
+	def reset(self):
+		try: self.byte_write_verify(REG_IOCONTROL, 0x01 << 3)
+		except pigpio.error as e:
+			if e.value == pigpio.error_text(pigpio.PI_I2C_WRITE_FAILED):
+				if self.byte_read(REG_IOCONTROL) != 0x00:
+					print("Reset Verification Error: %s" % e)
+					sys.exit(1)
+			else:
+				print("Reset Error: %s" % e)
+				sys.exit(1)
+
+	# Write some test patterns to the scratchpad and verify receipt
+	def scratchpad_test(self):
+		t1b, t1v = self.byte_write_verify(REG_SPR, 0xFF)
+		t2b, t2v = self.byte_write_verify(REG_SPR, 0xAA)
+		t3b, t3v = self.byte_write_verify(REG_SPR, 0x00)
+		return t1b and t2b and t3b
 
 	# Compute required divider values for DLH and DLL registers
 	# Return tuple indicating (boolean success, new values in registers)
 	def set_divisor_latch(self, prescaler = 1):
 		if prescaler not in [1, 4]: prescaler = 1
-		div = round(self.freq/(prescaler*self.baudrate*16))
+		div = round(self.xtalfreq/(prescaler*self.baudrate*16))
 		dlh, dll = divmod(div, 0x100)
 		dlhb, dlhv = self.byte_write_verify(REG_DLH, dlh)
 		dllb, dllv = self.byte_write_verify(REG_DLL, dll)
@@ -235,7 +240,6 @@ class SC16IS750:
 	# Write I2C byte to specified register and wait for value to be written
 	def byte_write(self, reg, byte):
 		self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
-		time.sleep(self.delay)
 
 	# Read I2C byte from specified register
 	# Return byte received from SMBus

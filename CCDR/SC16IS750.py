@@ -190,8 +190,8 @@ EFCR_RX_DISABLE     = 0x01 << 1
 EFCR_RS485_ENABLE   = 0x01 << 0
 
 # Define collections of read and write only registers
-REGS_READ_ONLY  = [REG_RHR, REG_IIR, REG_LSR, REG_MSR, REG_TXLVL, REG_RXLVL]
-REGS_WRITE_ONLY = [REG_THR, REG_FCR]
+#REGS_READ_ONLY  = [REG_RHR, REG_IIR, REG_LSR, REG_MSR, REG_TXLVL, REG_RXLVL]
+#REGS_WRITE_ONLY = [REG_THR, REG_FCR]
 
 class SC16IS750:
 
@@ -295,39 +295,32 @@ class SC16IS750:
 	# Write I2C byte to specified register and read it back
 	# Return tuple indicating (boolean success, new value in register)
 	def byte_write_verify(self, reg, byte):
-		if reg not in REGS_WRITE_ONLY:
-			self.byte_write(reg, byte)
-			value = self.byte_read(reg)
-			return (value == byte, value)
-		else: raise ValueError("Attemped to verify write on write only register!")
+		#if reg not in REGS_WRITE_ONLY:
+		self.byte_write(reg, byte)
+		value = self.byte_read(reg)
+		return (value == byte, value)
+		#else: raise ValueError("Attemped to verify write on write only register!")
 
 	# Write I2C byte to specified register
 	def byte_write(self, reg, byte):
-		if reg not in REGS_READ_ONLY:
-			self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
-		else: raise ValueError("Attempted to write to read only register!")
+		#if reg not in REGS_READ_ONLY:
+		self.pi.i2c_write_byte_data(self.i2c, self.reg_conv(reg), byte)
+		#else: raise ValueError("Attempted to write to read only register!")
 
 	# Read I2C byte from specified register
 	# Return byte received from driver
 	def byte_read(self, reg):
-		if reg not in REGS_WRITE_ONLY:
-			return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
-		else: raise ValueError("Attempted to read from write only register!")
+		#if reg not in REGS_WRITE_ONLY:
+		return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
+		#else: raise ValueError("Attempted to read from write only register!")
 
 	# Read I2C block from specified register
-	# FIFO is 64 bytes, but can only read 32 bytes at a time
 	# Return block received from driver
 	def block_read(self, reg, num):
-		block = []
-		while num > 32:
-			n, d = self.pi.i2c_read_i2c_block_data(self.i2c, self.reg_conv(reg), 32)
-			block.extend(d)
-			num -= n
-		n, d = self.pi.i2c_read_i2c_block_data(self.i2c, self.reg_conv(reg), num)
-		block.extend(d)
-		num -= n
-		if num != 0: print("ERROR")
-		return block
+		self.pi.i2c_write_device(self.i2c, [self.reg_conv(reg)])
+		n, d = self.pi.i2c_read_device(self.i2c, num)
+		if num != n: raise ValueError("All available bytes were not successfully read!")
+		return d
 
 	# Convert register address given in datasheet to actual address on chip
 	def reg_conv(self, reg):

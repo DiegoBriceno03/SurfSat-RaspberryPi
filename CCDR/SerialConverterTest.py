@@ -74,7 +74,7 @@ def handle_comm(gpio, level, tick):
 	# Determine number of bytes in RX FIFO, then read and buffer them
 	num = chip_wtc.byte_read(SC16IS750.REG_RXLVL)
 	sys.stdout.write(" %d" % num)
-	block = chip_wtc.block_read(SC16IS750.REG_RHR, num) # Limited to 32 bytes
+	block = chip_wtc.block_read(SC16IS750.REG_RHR, num)
 	data.append([tick, block])
 	print()
 
@@ -109,7 +109,7 @@ print("Waiting for data. Hit Ctrl+C to abort.")
 
 # Send MSB=1 to enable emulator, wait, then disable with MSB=0
 chip_wtc.byte_write(SC16IS750.REG_THR, 0x80)
-time.sleep(0.01)
+#time.sleep(0.001)
 chip_wtc.byte_write(SC16IS750.REG_THR, 0x00)
 
 while True:

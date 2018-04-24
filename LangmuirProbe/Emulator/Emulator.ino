@@ -1,5 +1,6 @@
 // Define global boolean to track science vs idle mode
 boolean sciencemode = false;
+boolean sciencedelay = true;
 
 // Define global long integer to track simulated data
 unsigned long data = 0x00000000;
@@ -19,9 +20,16 @@ void setup()
 void loop()
 {
 
-	// PLP sends four bytes every 1 ms in science mode
+	// PLP sends four bytes for every sample in science mode
 	if(sciencemode)
 	{
+
+		// Delay for 5 ms once science mode is enabled
+		if(sciencedelay)
+		{
+			sciencedelay = false;
+			delay(5);
+		}	
 
 		// Define character array to store TX data
 		char datastr[4] = {};
@@ -36,6 +44,14 @@ void loop()
 		// Increment the simulated data variable
 		data += 0x00000001;
 
+	}
+	else
+	{
+		// Reset flags if science mode disabled
+		if(!sciencedelay)
+		{
+			sciencedelay = true;
+		}
 	}
 
 	// Send data at a cadence of 20 Hz (50 ms)

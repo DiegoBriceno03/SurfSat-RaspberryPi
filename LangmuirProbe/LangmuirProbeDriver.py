@@ -3,7 +3,7 @@ import LangmuirProbe as PLP
 
 plp = PLP.LangmuirProbe(pin_reset = 11, pin_enable = 13, pin_status = 16)
 
-plp.send_command_byte(PLP.MODE_SCI | PLP.BIAS_SWEPT | PLP.OPER_PULSED | PLP.SPEED_SLOW)
+plp.send_command_byte(PLP.MODE_SCIENCE | PLP.CALIB_NONE | PLP.WAVE_SINGLE | PLP.BIAS_SWEPT | PLP.OPER_PULSED | PLP.SPEED_SLOW)
 
 filename = 'data.txt'
 saveFile = open(filename, 'w')

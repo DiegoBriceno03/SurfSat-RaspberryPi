@@ -25,17 +25,47 @@ import serial
 import RPi.GPIO as GPIO
 import time
 
-SPEED_SLOW = 0x00
-SPEED_FAST = 0x01
+# Bit 0 determines data collection speed
+# 0: Slow
+# 1: Fast
+SPEED_SLOW = 0x00 << 0
+SPEED_FAST = 0x01 << 0
 
-OPER_CONTIN = 0x00 << 1
-OPER_PULSED = 0x01 << 1
+# Bit 1 determines operational mode
+# 0: Continuous
+# 1: Pulsed
+OPER_CONTINUOUS = 0x00 << 1
+OPER_PULSED     = 0x01 << 1
 
+# Bit 2 determines bias
+# 0: Swept
+# 1: Fixed
 BIAS_SWEPT = 0x00 << 2
 BIAS_FIXED = 0x01 << 2
 
-MODE_IDLE = 0x00 << 7
-MODE_SCI  = 0x01 << 7
+# Bits 3 and 4 determine waveform type
+# 00: Single
+# 01: Pseudo-absolute
+# 10: Pseudo-absolute, pulsed
+# 11: Tech demo
+WAVE_SINGLE                 = 0x00 << 3
+WAVE_PSEUDO_ABSOLUTE        = 0x01 << 3
+WAVE_PSEUDO_ABSOLUTE_PULSED = 0x02 << 3
+WAVE_TECH_DEMO              = 0x03 << 3
+
+# Bits 5 and 6 determine calibration status
+# 00: Calibration mode, 50 Kohm
+# 01: Calibration mode, 50 Mohm
+# 1X: Science mode
+CALIB_50K  = 0x00 << 5
+CALIB_50M  = 0x01 << 5
+CALIB_NONE = 0x02 << 5
+
+# Bit 7 determines mode
+# 0: Idle
+# 1: Science
+MODE_IDLE    = 0x00 << 7
+MODE_SCIENCE = 0x01 << 7
 
 class LangmuirProbe:
 	def __init__(self, pin_reset, pin_enable, pin_status):
@@ -90,7 +120,8 @@ class LangmuirProbe:
 			sys.exit(1)
 
 	def send_command_byte(self, command_byte):
-		command_byte = command_byte | 0x60
+		# Always set second MSB to avoid calibration mode
+		command_byte = command_byte | 0x40
 		print("Sending command byte 0x%02X..." % command_byte)
 		command_byte = bytes([command_byte])
 		self.ser.write(command_byte)

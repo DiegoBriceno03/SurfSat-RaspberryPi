@@ -35,11 +35,12 @@ void loop()
 		char datastr[4] = {};
 
 		// Update data string with values from integer
-		for( char i = 0; i < 32; i+=8)
-			datastr[i] = (data & (0xFF << i*3)) >> i*3;
+		for( char i = 0; i < 4; i++ )
+			datastr[3-i] = (data >> i*8) & 0xFF;
 
-		// Transmit the simulated data string
-		Serial.print(data);
+		// Transmit data string over serial port
+		for( char i = 0; i < 4; i++ )
+			Serial.print(datastr[i]);
 
 		// Increment the simulated data variable
 		data += 0x00000001;

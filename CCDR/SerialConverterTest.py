@@ -35,7 +35,7 @@ UART_PARITY_WTC = SC16IS750.LCR_PARITY_NONE
 UART_PARITY_PLP = SC16IS750.LCR_PARITY_NONE
 
 # Create buffer to store RX data
-data = []
+data = {"WTC": [], "PLP": [], "UNK": []}
 
 # Define lookup table for interrupts
 INTERRUPTS = {
@@ -59,24 +59,22 @@ def handle_comm(gpio, level, tick):
 	else:                     board = "UNK"
 
 	# Determine which interrupt was triggered
-	irqstatus = chip_wtc.get_interrupt_status()
-	sys.stdout.write("%s 0x%02X: %s" % (board, irqstatus, INTERRUPTS.get(irqstatus, "Unknown Interrupt")))
+	irq = chip_wtc.get_interrupt_status()
 
+	lsr = None
 	# Handle error states and false triggers first
-	if irqstatus == SC16IS750.IIR_RX_ERROR:
+	if irq == SC16IS750.IIR_RX_ERROR:
 		lsr = chip_wtc.byte_read(SC16IS750.REG_LSR)
 		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  sys.stdout.write(" (Overflow)")
 		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: sys.stdout.write(" (FIFO Error)")
-	elif irqstatus == SC16IS750.IIR_NONE:
+	elif irq == SC16IS750.IIR_NONE:
 		print()
 		return
 
 	# Determine number of bytes in RX FIFO, then read and buffer them
 	num = chip_wtc.byte_read(SC16IS750.REG_RXLVL)
-	sys.stdout.write(" %d" % num)
 	block = chip_wtc.block_read(SC16IS750.REG_RHR, num)
-	data.append([tick, block])
-	print()
+	data[board].append([tick, irq, lsr, num, block])
 
 # Initialize pigpio
 pi = pigpio.pi()
@@ -107,22 +105,33 @@ chip_wtc.byte_write(SC16IS750.REG_FCR, fcr)
 
 print("Waiting for data. Hit Ctrl+C to abort.")
 
-# Send MSB=1 to enable emulator, wait, then disable with MSB=0
+# Enable emulator by sending byte with MSB set
 chip_wtc.byte_write(SC16IS750.REG_THR, 0x80)
-#time.sleep(0.001)
-chip_wtc.byte_write(SC16IS750.REG_THR, 0x00)
 
 while True:
 	try:
 		# Dump RX data from buffer to screen when available
-		while len(data) > 0:
-			tick, block = data.pop(0)
-			sys.stdout.write("%d (%d bytes):" % (tick, len(block)))
-			for char in block:
-				sys.stdout.write(" 0x%02X" % char)
-			print()
-		time.sleep(1)
+		for board, values in data.items():
+			while len(values) > 0:
+				tick, irq, lsr, num, block = values.pop(0)
+				sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %s)" % (board, tick, irq, INTERRUPTS.get(irq)))
+				if lsr is not None: sys.stdout.write(" (LSR: 0x%02X)" % lsr)
+				sys.stdout.write(" (Bytes: %02d/%02d):" % (num, len(block)))
+				for char in block:
+					sys.stdout.write(" 0x%02X" % char)
+				print()
+
+				if lsr is not None:
+					if lsr & SC16IS750.LSR_OVERFLOW_ERROR:
+						print("Fatal overflow error encountered. Terminating program.")
+						break
+					if lsr & SC16IS750.LSR_FIFO_DATA_ERROR:
+						print("Fatal FIFO data error encountered. Terminating program.")
+						break
+		time.sleep(0.1)
 	except KeyboardInterrupt:
+		# Disable emulator by sending byte with MSB unset
+		chip_wtc.byte_write(SC16IS750.REG_THR, 0x00)
 		chip_wtc.close()
 		pi.stop()
 		break

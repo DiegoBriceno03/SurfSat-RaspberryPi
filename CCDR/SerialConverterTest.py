@@ -65,8 +65,8 @@ def handle_comm(gpio, level, tick):
 	# Handle error states and false triggers first
 	if irq == SC16IS750.IIR_RX_ERROR:
 		lsr = chip_wtc.byte_read(SC16IS750.REG_LSR)
-		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  sys.stdout.write(" (Overflow)")
-		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: sys.stdout.write(" (FIFO Error)")
+		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  pass
+		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: pass
 	elif irq == SC16IS750.IIR_NONE:
 		print()
 		return
@@ -123,11 +123,9 @@ while True:
 
 				if lsr is not None:
 					if lsr & SC16IS750.LSR_OVERFLOW_ERROR:
-						print("Fatal overflow error encountered. Terminating program.")
-						break
+						raise ValueError("Fatal overflow error encountered.")
 					if lsr & SC16IS750.LSR_FIFO_DATA_ERROR:
-						print("Fatal FIFO data error encountered. Terminating program.")
-						break
+						raise ValueError("Fatal FIFO data error encountered.")
 		time.sleep(0.1)
 	except KeyboardInterrupt:
 		# Disable emulator by sending byte with MSB unset

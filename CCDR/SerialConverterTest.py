@@ -70,10 +70,11 @@ def handle_comm(gpio, level, tick):
 	elif irq == SC16IS750.IIR_NONE:
 		return
 
-	# Determine number of bytes in RX FIFO, then read and buffer them
-	num = chip_wtc.byte_read(SC16IS750.REG_RXLVL)
+	# Determine number of bytes in RX FIFO, read multiple of four bytes, and store
+	avail = chip_wtc.byte_read(SC16IS750.REG_RXLVL)
+	num = int(avail/4)*4
 	block = chip_wtc.block_read(SC16IS750.REG_RHR, num)
-	data[board].append([tick, irq, lsr, num, block])
+	data[board].append([tick, irq, lsr, avail, block])
 
 # Initialize pigpio
 pi = pigpio.pi()
@@ -115,7 +116,7 @@ while True:
 				tick, irq, lsr, num, block = values.pop(0)
 				sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %s)" % (board, tick, irq, INTERRUPTS.get(irq)))
 				if lsr is not None: sys.stdout.write(" (LSR: 0x%02X)" % lsr)
-				sys.stdout.write(" (Bytes: %02d/%02d):" % (num, len(block)))
+				sys.stdout.write(" (Bytes: %02d/%02d):" % (len(block), num))
 				for char in block:
 					sys.stdout.write(" 0x%02X" % char)
 				print()

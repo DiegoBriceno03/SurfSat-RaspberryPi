@@ -114,7 +114,7 @@ while True:
 		for board, values in data.items():
 			while len(values) > 0:
 				tick, irq, lsr, num, block = values.pop(0)
-				sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %s)" % (board, tick, irq, INTERRUPTS.get(irq)))
+				sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %-10s)" % (board, tick, irq, INTERRUPTS.get(irq)))
 				if lsr is not None: sys.stdout.write(" (LSR: 0x%02X)" % lsr)
 				sys.stdout.write(" (Bytes: %02d/%02d):" % (len(block), num))
 				for char in block:

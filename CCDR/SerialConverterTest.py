@@ -68,7 +68,6 @@ def handle_comm(gpio, level, tick):
 		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  pass
 		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: pass
 	elif irq == SC16IS750.IIR_NONE:
-		print()
 		return
 
 	# Determine number of bytes in RX FIFO, then read and buffer them

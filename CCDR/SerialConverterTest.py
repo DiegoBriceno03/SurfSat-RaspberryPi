@@ -54,27 +54,26 @@ INTERRUPTS = {
 def handle_comm(gpio, level, tick):
 
 	# Determine which chip generated the interrupt
-	if   gpio == PIN_IRQ_WTC: board = "WTC"
-	elif gpio == PIN_IRQ_PLP: board = "PLP"
-	else:                     board = "UNK"
+	# Also define multiple of bytes to read
+	if gpio == PIN_IRQ_WTC:
+		board = "WTC"
+		mult  = 1
+	elif gpio == PIN_IRQ_PLP:
+		board = "PLP"
+		mult  = 4
+	else:
+		board = "UNK"
+		mult  = 1
 
-	# Determine which interrupt was triggered
-	irq = chip_wtc.get_interrupt_status()
+	# Determine interrupt, error, and RX level statuses
+	irq, lsr, lvl = chip_wtc.get_interrupt_status()
 
-	lsr = None
-	# Handle error states and false triggers first
-	if irq == SC16IS750.IIR_RX_ERROR:
-		lsr = chip_wtc.byte_read(SC16IS750.REG_LSR)
-		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:  pass
-		if lsr & SC16IS750.LSR_FIFO_DATA_ERROR: pass
-	elif irq == SC16IS750.IIR_NONE:
-		return
+	# Return if interrupt was already serviced
+	if irq == SC16IS750.IIR_NONE: return
 
-	# Determine number of bytes in RX FIFO, read multiple of four bytes, and store
-	avail = chip_wtc.byte_read(SC16IS750.REG_RXLVL)
-	num = int(avail/4)*4
-	block = chip_wtc.block_read(SC16IS750.REG_RHR, num)
-	data[board].append([tick, irq, lsr, avail, block])
+	# Rapidly read RX FIFO data in byte multiples defined above and store
+	block = chip_wtc.block_read(SC16IS750.REG_RHR, int(lvl/mult)*mult)
+	data[board].append([tick, irq, lsr, lvl, block])
 
 # Initialize pigpio
 pi = pigpio.pi()

@@ -192,8 +192,8 @@ EFCR_RS485_ENABLE   = 0x01 << 0
 # Define pigpio i2c_zip constants
 I2C_END     = 0x00 # No more commands
 I2C_ESCAPE  = 0x01 # Next P is two bytes
-I2C_ON      = 0x02 # Switch combined flag on
-I2C_OFF     = 0x03 # Switch combined flag off
+I2C_START   = 0x02 # Switch combined flag on
+I2C_STOP    = 0x03 # Switch combined flag off
 I2C_ADDRESS = 0x04 # Set I2C address to P
 I2C_FLAGS   = 0x05 # Set I2C flags to LSB + (MSB << 8)
 I2C_READ    = 0x06 # Read P bytes of data
@@ -204,7 +204,6 @@ class SC16IS750:
 	def __init__(self, pi, i2cbus = 1, i2caddr = 0x48, xtalfreq = 1843200, baudrate = 115200, databits = LCR_DATABITS_8, stopbits = LCR_STOPBITS_1, parity = LCR_PARITY_NONE):
 		self.pi = pi
 		self.i2c = pi.i2c_open(i2cbus, i2caddr)
-		self.i2caddr = i2caddr
 		self.xtalfreq = xtalfreq
 		self.baudrate = baudrate
 		self.databits = databits
@@ -271,8 +270,12 @@ class SC16IS750:
 
 	# Retreive interrupt status (IIR[5:0])
 	def get_interrupt_status(self):
-		# Read IIR register and zero out two MSBs
-		return self.byte_read(REG_IIR) & 0x3F
+		# Read IIR, LSR, and RXLVL registers
+		n, d = self.pi.i2c_zip(self.i2c, [I2C_WRITE, 1, self.reg_conv(REG_IIR), I2C_READ, 1, I2C_START, I2C_WRITE, 1, self.reg_conv(REG_LSR), I2C_READ, 1, I2C_START, I2C_WRITE, 1, self.reg_conv(REG_RXLVL), I2C_READ, 1, I2C_END])
+		if n < 0: raise pigpio.error(pigpio.error_text(n))
+		elif n != 3: raise ValueError("unexpected number of bytes received")
+		# Mask out two MSBs in IIR value and return tuple
+		return (int(d[0]) & 0x3F, int(d[1]), int(d[2]))
 
 	# Change single bit inside register
 	def enable_register_bit(self, reg, bit, enable):
@@ -295,10 +298,9 @@ class SC16IS750:
 	# Write I2C byte to specified register and read it back
 	# Return tuple indicating (boolean success, new value in register)
 	def byte_write_verify(self, reg, byte):
-		#self.byte_write(reg, byte)
-		#value = self.byte_read(reg)
-		n, d = self.pi.i2c_zip(self.i2c, [I2C_ADDRESS, self.i2caddr, I2C_WRITE, 2, self.reg_conv(reg), byte, I2C_WRITE, 1, self.reg_conv(reg), I2C_READ, 1, I2C_END])
-		if n != 1: raise ValueError("Improperly formatted I2C zip list!")
+		n, d = self.pi.i2c_zip(self.i2c, [I2C_WRITE, 2, self.reg_conv(reg), byte, I2C_WRITE, 1, self.reg_conv(reg), I2C_READ, 1, I2C_END])
+		if n < 0: raise pigpio.error(pigpio.error_text(n))
+		elif n != 1: raise ValueError("unexpected number of bytes received")
 		d = int(d[0])
 		return (d == byte, d)
 
@@ -314,10 +316,9 @@ class SC16IS750:
 	# Read I2C block from specified register
 	# Return block received from driver
 	def block_read(self, reg, num):
-		#self.pi.i2c_write_device(self.i2c, [self.reg_conv(reg)])
-		#n, d = self.pi.i2c_read_device(self.i2c, num)
-		n, d = self.pi.i2c_zip(self.i2c, [I2C_ADDRESS, self.i2caddr, I2C_WRITE, 1, self.reg_conv(reg), I2C_READ, num, I2C_END])
-		if num != n: raise ValueError("All available bytes were not successfully read!")
+		n, d = self.pi.i2c_zip(self.i2c, [I2C_WRITE, 1, self.reg_conv(reg), I2C_READ, num, I2C_END])
+		if n < 0: raise pigpio.error(pigpio.error_text(n))
+		elif n != num: raise ValueError("all available bytes were not successfully read")
 		return d
 
 	# Convert register address given in datasheet to actual address on chip

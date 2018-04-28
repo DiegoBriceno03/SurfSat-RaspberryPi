@@ -55,8 +55,8 @@ void loop()
 		}
 	}
 
-	// Send data at a cadence of 20 Hz (50 ms)
-	delay(50);
+	// Send data at a cadence of 715 Hz (1.4 ms)
+	delayMicroseconds(1400);
 
 }
 

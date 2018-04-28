@@ -3,6 +3,8 @@ import time
 import SC16IS750
 import pigpio
 
+filename = 'data.txt'
+
 # I2C bus identifier
 I2C_BUS = 1
 
@@ -50,6 +52,10 @@ INTERRUPTS = {
 	SC16IS750.IIR_CTS_RTS:    "CTS or RTS State Change"
 }
 
+CALLBACK_FALLING  = 0
+CALLBACK_RISING   = 1
+CALLBACK_WATCHDOG = 2
+
 # Define WTC interrupt service routine
 #def handle_comm_wtc(gpio, level, tick):
 
@@ -67,47 +73,45 @@ INTERRUPTS = {
 	#block = chip_wtc.block_read(SC16IS750.REG_RHR, int(lvl/mult)*mult)
 	#data["WTC"].append([tick, irq, lsr, lvl, block])
 
-reset_plp_flag = True
 # Define PLP interrupt service routine
 def handle_comm_plp(gpio, level, tick):
-	global reset_plp_flag
 
 	# Verify correct GPIO caused the interrupt
 	if gpio == PIN_IRQ_PLP: mult = 4
 	else: return
 
+	# Handle watchdog interrupts first
+	if level == CALLBACK_WATCHDOG:
+		print("IRQ timeout, resetting FIFOs ...")
+		reset_FIFO()
+		return
+
 	# Determine interrupt, error, and RX level statuses
 	irq, lsr, lvl = chip_plp.get_interrupt_status()
 
 	# Return if interrupt was already serviced
-	if irq == SC16IS750.IIR_NONE: return
-	elif irq == SC16IS750.IIR_RX_ERROR:
+	#if irq == SC16IS750.IIR_NONE: return
+
+	# If RX overflow error, data is unusable, so resynchronize
+	if irq == SC16IS750.IIR_RX_ERROR:
 		if lsr & SC16IS750.LSR_OVERFLOW_ERROR:
-			reset_plp = True
+			reset_FIFO()
+			data["PLP"].append([tick, irq, lsr, lvl, []])
+			return
 
 	# Rapidly read RX FIFO data in byte multiples defined above and store
 	block = chip_plp.block_read(SC16IS750.REG_RHR, int(lvl/mult)*mult)
 	data["PLP"].append([tick, irq, lsr, lvl, block])
 
-def reset_plp():
-	global reset_plp_flag
-	reset_plp_flag = False
-	print("[%d] Resetting PLP board ..." % pi.get_current_tick())
+def reset_FIFO():
+	global cb_plp
 
-	# Disable emulator by sending byte with MSB unset
-	chip_plp.byte_write(SC16IS750.REG_THR, 0x00)
+	print("[%d] Resetting FIFO ..." % pi.get_current_tick())
 
-	# Reset TX and RX FIFOs and disable FIFOs
-	fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET
+	# Reset TX and RX FIFOs and set RX trigger
+	fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET | SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_56_BYTES
 	chip_plp.byte_write(SC16IS750.REG_FCR, fcr)
 	time.sleep(2.0/XTAL_FREQ_WTC)
-
-	# Enable FIFOs and set RX trigger level to 16 bytes
-	fcr = SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_16_BYTES
-	chip_plp.byte_write(SC16IS750.REG_FCR, fcr)
-
-	# Enable emulator by sending byte with MSB set
-	chip_plp.byte_write(SC16IS750.REG_THR, 0x80)
 
 # Initialize pigpio
 pi = pigpio.pi()
@@ -130,38 +134,57 @@ chip_plp.byte_write_verify(SC16IS750.REG_IER, ier)
 
 print("[%d] Waiting for data. Hit Ctrl+C to abort." % pi.get_current_tick())
 
+# Clear FIFOs and set watchdog
+reset_FIFO()
+pi.set_watchdog(PIN_IRQ_PLP, 1000)
+
+# Enable emulator by sending byte with MSB set
+chip_plp.byte_write(SC16IS750.REG_THR, 0x80)
+
 # Collect data and store in RAM until KeyboardInterrupt or timeout
-#start = pi.get_current_tick()
-#while pigpio.tickDiff(start, pi.get_current_tick()) < 950000:
-while True:
-	try:
-		if reset_plp_flag: reset_plp()
-		time.sleep(0.01)
-	except KeyboardInterrupt:
-		break
+start = pi.get_current_tick()
+while pigpio.tickDiff(start, pi.get_current_tick()) < 0x00FFFFFF:
+	try: time.sleep(0.1)
+	except KeyboardInterrupt: break
+
+# Disable watchdog timer and callback for PLP
+pi.set_watchdog(PIN_IRQ_PLP, 0)
+cb_plp.cancel()
 
 # Disable emulator by sending byte with MSB unset
 chip_plp.byte_write(SC16IS750.REG_THR, 0x00)
 
-# Wait for data to finish being stored
-print("[%d] Waiting for remainder of data to be stored ..." % pi.get_current_tick())
-time.sleep(0.5)
+print("[%d] Saving data to '%s' ..." % (pi.get_current_tick(), filename))
+
+# Close handle to serial converter chip and release pigpio object
 chip_plp.close()
 pi.stop()
 
-# Dump RX data from buffer to screen when available
-#for board, values in data.items():
-#	while len(values) > 0:
-#		tick, irq, lsr, num, block = values.pop(0)
-#		sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %-10s)" % (board, tick, irq, INTERRUPTS.get(irq)))
-#		if lsr is not None: sys.stdout.write(" (LSR: 0x%02X)" % lsr)
-#		sys.stdout.write(" (Bytes: %02d/%02d):" % (len(block), num))
-#		for char in block:
-#			sys.stdout.write(" 0x%02X" % char)
-#		print()
-#
-#		if lsr is not None:
-#			if lsr & SC16IS750.LSR_OVERFLOW_ERROR:
-#				raise ValueError("Fatal overflow error encountered.")
-#			if lsr & SC16IS750.LSR_FIFO_DATA_ERROR:
-#				raise ValueError("Fatal FIFO data error encountered.")
+# Write collected data from RAM to file
+savefile = open(filename, 'w')
+for board, values in data.items():
+	if board == "PLP":
+		while len(values) > 0:
+			tick, irq, lsr, num, block = values.pop(0)
+			tick = pigpio.tickDiff(start, tick)
+			#sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %-10s) (LSR: 0x%02X) (Bytes: %02d/%02d):" % (board, tick, irq, INTERRUPTS.get(irq), lsr, len(block), num))
+			savefile.write("%08X, %02X, %02X, %02X" % (tick, irq, lsr, int(len(block)/4)))
+			data = 0
+			for i in range(len(block)):
+				if i % 4 == 0:
+					#sys.stdout.write(" 0x")
+					savefile.write(", ")
+					data = 0
+				data |= (block[i] << (3 - (i % 4)) * 8)
+				if i % 4 == 3:
+					#sys.stdout.write("%08X" % data)
+					savefile.write("%08X" % data)
+			#sys.stdout.write("\n")
+			savefile.write("\n")
+
+			#if lsr & SC16IS750.LSR_OVERFLOW_ERROR:
+			#	raise ValueError("Fatal overflow error encountered.")
+			#if lsr & SC16IS750.LSR_FIFO_DATA_ERROR:
+			#	raise ValueError("Fatal FIFO data error encountered.")
+
+savefile.close()

@@ -104,14 +104,16 @@ def handle_comm_plp(gpio, level, tick):
 	data["PLP"].append([tick, irq, lsr, lvl, block])
 
 def reset_FIFO():
-	global cb_plp
+	print("[%08X] Resetting FIFO ..." % pigpio.tickDiff(start, pi.get_current_tick()))
 
-	print("[%d] Resetting FIFO ..." % pi.get_current_tick())
-
-	# Reset TX and RX FIFOs and set RX trigger
-	fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET | SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_56_BYTES
+	# Reset TX and RX FIFOs
+	fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET
 	chip_plp.byte_write(SC16IS750.REG_FCR, fcr)
 	time.sleep(2.0/XTAL_FREQ_WTC)
+
+	# Enable FIFOs and set RX FIFO trigger level
+	fcr = SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_56_BYTES
+	chip_plp.byte_write(SC16IS750.REG_FCR, fcr)
 
 # Initialize pigpio
 pi = pigpio.pi()
@@ -132,7 +134,8 @@ cb_plp = pi.callback(PIN_IRQ_PLP, pigpio.FALLING_EDGE, handle_comm_plp)
 ier = SC16IS750.IER_RX_ERROR | SC16IS750.IER_RX_READY
 chip_plp.byte_write_verify(SC16IS750.REG_IER, ier)
 
-print("[%d] Waiting for data. Hit Ctrl+C to abort." % pi.get_current_tick())
+start = pi.get_current_tick()
+print("[%08X] Waiting for data. Hit Ctrl+C to abort." % pigpio.tickDiff(start, pi.get_current_tick()))
 
 # Clear FIFOs and set watchdog
 reset_FIFO()
@@ -142,9 +145,8 @@ pi.set_watchdog(PIN_IRQ_PLP, 1000)
 chip_plp.byte_write(SC16IS750.REG_THR, 0x80)
 
 # Collect data and store in RAM until KeyboardInterrupt or timeout
-start = pi.get_current_tick()
-while pigpio.tickDiff(start, pi.get_current_tick()) < 0x00FFFFFF:
-	try: time.sleep(0.1)
+while pigpio.tickDiff(start, pi.get_current_tick()) < 0x35A4E900:
+	try: time.sleep(0.5)
 	except KeyboardInterrupt: break
 
 # Disable watchdog timer and callback for PLP
@@ -154,7 +156,7 @@ cb_plp.cancel()
 # Disable emulator by sending byte with MSB unset
 chip_plp.byte_write(SC16IS750.REG_THR, 0x00)
 
-print("[%d] Saving data to '%s' ..." % (pi.get_current_tick(), filename))
+print("[%08X] Saving data to '%s' ..." % (pigpio.tickDiff(start, pi.get_current_tick()), filename))
 
 # Close handle to serial converter chip and release pigpio object
 chip_plp.close()

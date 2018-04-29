@@ -40,7 +40,7 @@ for i in range(len(T)):
 		try: sys.stdout.write("RX error causing %d missed samples detected: " % (D[i+1] - D[i-1] - 1))
 		except TypeError: sys.stdout.write("RX error causing unknown missed samples detected: ")
 		overflows += 1
-	if I[i] != 0x0C and I[i] != 0x01:
+	if I[i] != 0x0C and I[i] != 0x04 and I[i] != 0x01:
 		if D[i] is None:
 			print("0x%08X 0x%02X 0x%02X 0x%02X None" % (T[i], I[i], L[i], N[i]))
 		else:

@@ -9,20 +9,20 @@ filename = 'data.txt'
 I2C_BUS = 1
 
 # ENABLE and RESET GPIO pins for PLP board
-PIN_PLP_RESET  = 23
-PIN_PLP_ENABLE = 27
+PIN_PLP_RESET  = 23 # BCM pin 23, header pin 16
+PIN_PLP_ENABLE = 27 # BCM pin 27, header pin 13
 
 # Interrupt GPIO pins for communications chips
 PIN_IRQ_WTC = 25 # BCM pin 25, header pin 22
-PIN_IRQ_PLP = 11 # BCM pin 11, header pin 23
+PIN_IRQ_PLP =  8 # BCM pin  8, header pin 24
 
 # I2C addresses for communications chips
 I2C_ADDR_WTC = 0x4C
 I2C_ADDR_PLP = 0x4D
 
 # Crystal frequencies for communications chips
-XTAL_FREQ_WTC = 1843200
-XTAL_FREQ_PLP = 1843200
+XTAL_FREQ_WTC = 11059200 # 1843200
+XTAL_FREQ_PLP = 11059200 # 1843200
  
 # UART baudrates for communications chips
 UART_BAUD_WTC = 115200

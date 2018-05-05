@@ -1,3 +1,7 @@
+#define PIN_RESET   2
+#define PIN_ENABLE  3
+#define PIN_STATUS 13
+
 // Define global boolean to track science vs idle mode
 boolean sciencemode = false;
 boolean sciencedelay = true;
@@ -12,16 +16,32 @@ void setup()
 	Serial.begin(115200);
 
 	// Configure onboard LED to indicate science mode
-	pinMode(13, OUTPUT);
-	digitalWrite(13, LOW);
+	pinMode(PIN_STATUS, OUTPUT);
+	digitalWrite(PIN_STATUS, LOW);
+
+	// Configure inputs defining RESET and ENABLE signals
+	pinMode(PIN_RESET,  INPUT_PULLUP); // active low signal
+	pinMode(PIN_ENABLE, INPUT);        // active high signal
 
 }
 
 void loop()
 {
 
+	// If RESET is active, clear data, and stop transmit
+	if( digitalRead(PIN_RESET) == LOW )
+	{
+		data = 0x00000000;
+		sciencemode = false;
+	}
+	// If ENABLE is inactive, keep data, but stop transmit
+	else if( digitalRead(PIN_ENABLE) == LOW )
+	{
+		sciencemode = false;
+	}
+
 	// PLP sends four bytes for every sample in science mode
-	if(sciencemode)
+	if( sciencemode )
 	{
 
 		// Delay for 5 ms once science mode is enabled
@@ -49,10 +69,7 @@ void loop()
 	else
 	{
 		// Reset flags if science mode disabled
-		if(!sciencedelay)
-		{
-			sciencedelay = true;
-		}
+		sciencedelay = true;
 	}
 
 	// Send data at a cadence of 715 Hz (1.4 ms)
@@ -74,7 +91,7 @@ void serialEvent()
 		sciencemode = (inChar & 0x80);
 
 		// Update LED to indicate science mode status
-		digitalWrite(13, sciencemode ? HIGH : LOW);
+		digitalWrite(PIN_STATUS, sciencemode ? HIGH : LOW);
 
 	}
 

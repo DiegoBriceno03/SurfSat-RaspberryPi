@@ -8,6 +8,10 @@ filename = 'data.txt'
 # I2C bus identifier
 I2C_BUS = 1
 
+# ENABLE and RESET GPIO pins for PLP board
+PIN_PLP_RESET  = 23
+PIN_PLP_ENABLE = 27
+
 # Interrupt GPIO pins for communications chips
 PIN_IRQ_WTC = 25 # BCM pin 25, header pin 22
 PIN_IRQ_PLP = 11 # BCM pin 11, header pin 23
@@ -117,6 +121,13 @@ def reset_FIFO():
 
 # Initialize pigpio
 pi = pigpio.pi()
+
+# Set up PLP reset and enable signals
+pi.set_mode(PIN_PLP_RESET,  pigpio.OUTPUT)
+pi.set_mode(PIN_PLP_ENABLE, pigpio.OUTPUT)
+
+pi.write(PIN_PLP_RESET,  1) # active low
+pi.write(PIN_PLP_ENABLE, 1) # active high
 
 # Set up IRQ pins as inputs
 #pi.set_mode(PIN_IRQ_WTC, pigpio.INPUT)

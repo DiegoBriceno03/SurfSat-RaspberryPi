@@ -153,7 +153,7 @@ reset_FIFO()
 pi.set_watchdog(PIN_IRQ_PLP, 1000)
 
 # Enable emulator by sending byte with MSB set
-chip_plp.byte_write(SC16IS750.REG_THR, 0x80)
+chip_plp.byte_write(SC16IS750.REG_THR, 0xE2)
 
 # Collect data and store in RAM until KeyboardInterrupt or timeout
 while pigpio.tickDiff(start, pi.get_current_tick()) < 0x35A4E900:
@@ -165,7 +165,7 @@ pi.set_watchdog(PIN_IRQ_PLP, 0)
 cb_plp.cancel()
 
 # Disable emulator by sending byte with MSB unset
-chip_plp.byte_write(SC16IS750.REG_THR, 0x00)
+chip_plp.byte_write(SC16IS750.REG_THR, 0x60)
 
 print("[%08X] Saving data to '%s' ..." % (pigpio.tickDiff(start, pi.get_current_tick()), filename))
 

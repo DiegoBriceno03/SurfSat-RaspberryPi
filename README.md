@@ -1,8 +1,10 @@
 # SurfSat-RaspberryPi
-## Pi code running Picoscope, Langmuir probe, and electrometer ADC
-## Updated 2018/05/09
+### Pi code running Picoscope, Langmuir probe, and electrometer ADC
+### Updated 2018/05/09
 
-## Primary Hierarchy
+## File Listings and Descriptions
+
+### Root
 
 * **CCDR**: Main firmware for interfacing with all subsystems
 * **Electrometer**: Read from dual ADCs on electrometer board over I2C using interrupts

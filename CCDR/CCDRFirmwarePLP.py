@@ -60,13 +60,16 @@ CALLBACK_FALLING  = 0
 CALLBACK_RISING   = 1
 CALLBACK_WATCHDOG = 2
 
+
+# whenever there is data run this ---->>>>>
 # Define WTC interrupt service routine
 #def handle_comm_wtc(gpio, level, tick):
 
 	# Verify correct GPIO caused the interrupt
-	#if gpio == PIN_IRQ_WTC: mult = 1
+	#if gpio == PIN_IRQ_WTC: mult = 1   # PLP Sends 4 bytes or multiple of 4 bytes wtc only reads one
 	#else: return
 
+	#
 	# Determine interrupt, error, and RX level statuses
 	#irq, lsr, lvl = chip_wtc.get_interrupt_status()
 

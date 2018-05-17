@@ -6,7 +6,7 @@ import pigpio
 REG_RHR       = 0x00 # Receive Holding Register (R)
 REG_THR       = 0x00 # Transmit Holding Register (W)
 REG_IER       = 0x01 # Interrupt Enable Register (R/W)
-REG_IIR       = 0x02 # Interrupt Identification Register (R)
+REG_IIR       = 0x02 # Interrupt Identification Register (R) #
 REG_FCR       = 0x02 # FIFO Control Register (W)
 REG_LCR       = 0x03 # Line Control Register (R/W)
 REG_MCR       = 0x04 # Modem Control Register (R/W)

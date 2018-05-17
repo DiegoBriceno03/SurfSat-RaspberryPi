@@ -113,7 +113,7 @@ def reset_FIFO():
 	# Reset TX and RX FIFOs
 	fcr = SC16IS750.FCR_TX_FIFO_RESET | SC16IS750.FCR_RX_FIFO_RESET
 	chip_plp.byte_write(SC16IS750.REG_FCR, fcr)
-	time.sleep(2.0/XTAL_FREQ_WTC)
+	time.sleep(2.0/XTAL_FREQ_PLP)
 
 	# Enable FIFOs and set RX FIFO trigger level
 	fcr = SC16IS750.FCR_FIFO_ENABLE | SC16IS750.FCR_RX_TRIGGER_56_BYTES

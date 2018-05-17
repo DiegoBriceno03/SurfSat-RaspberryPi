@@ -313,6 +313,11 @@ class SC16IS750:
 	def byte_read(self, reg):
 		return self.pi.i2c_read_byte_data(self.i2c, self.reg_conv(reg))
 
+	# Write I2C block to specified register
+	def block_write(self, reg, bytestring):
+		n, d = self.pi.i2c_zip(self.i2c, [I2C_WRITE, 1, self.reg_conv(reg), I2C_WRITE, len(bytestring)] + list(bytestring) + [I2C_END])
+		if n < 0: raise pigpio.error(pigpio.error_text(n))
+
 	# Read I2C block from specified register
 	# Return block received from driver
 	def block_read(self, reg, num):

@@ -9,8 +9,8 @@ import bitstring
 #  #  2 bits - System Identifications
 #  #  9 bits - Picoscope Status (<0x140)
 #  # 60 bits - Data Start Timestamp (integer number of nanoseconds; can store >6.5 years)
-#  #  1 bits - Data Time Delta Units (us/ns)
-#  # 10 bits - Data Time Delta (in units above)
+#  #  1 bits - Data Timestep Units (us/ns)
+#  # 10 bits - Data Timestep (in units above)
 #  #  2 bits - Triggering Channel
 #  # 12 bits - Unused
 #  ###############################
@@ -35,7 +35,7 @@ sys_ident   = bitstring.Bits('0b11')
 pico_status = bitstring.Bits('0b111110110')
 start_time  = bitstring.Bits('0b1110010111010100110000111011001010100010001010110011')
 time_units  = bitstring.Bits('0b1')
-timestamp   = bitstring.Bits('0b1000100110')
+timestep    = bitstring.Bits('0b1000100110')
 trigger     = bitstring.Bits('0b10')
 unused      = bitstring.Bits('0b10111100110111101111')
 
@@ -45,7 +45,7 @@ header.append(sys_ident)
 header.append(pico_status)
 header.append(start_time)
 header.append(time_units)
-header.append(timestamp)
+header.append(timestep)
 header.append(trigger)
 header.append(unused)
 print("Header (%d bytes):\n%s" % (len(header.bytes), header))

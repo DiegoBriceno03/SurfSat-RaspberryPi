@@ -8,11 +8,11 @@ import bitstring
 #  #######  12 BYTE HEADER #######  
 #  #  2 bits - System Identifications
 #  #  9 bits - Picoscope Status (<0x140)
-#  # 52 bits - Data Start Timestamp (integer number of microseconds; can store >48 years)
-#  #  1 bits - Data Timestamp Units (us/ns)
-#  # 10 bits - Data Timestamp (in units above)
+#  # 60 bits - Data Start Timestamp (integer number of nanoseconds; can store >6.5 years)
+#  #  1 bits - Data Time Delta Units (us/ns)
+#  # 10 bits - Data Time Delta (in units above)
 #  #  2 bits - Triggering Channel
-#  # 20 bits - Unused
+#  # 12 bits - Unused
 #  ###############################
 #
 #  ## 240 BYTE (60 SAMPLE) BODY ##

@@ -151,6 +151,7 @@ while True:
 			# Since the ADC saves space for negative values as well, the single ended range is only 15 bits (therefore 0x7FFF bins).
 			datastr = '{0:d}, {1:d}, 0x{2:04X}, {3:+.4f}\n'.format(reading[0], reading[1], datatc, data*4.096/0x7FFF)
 			fh.write(datastr)
+			fh.flush()
 			sys.stdout.write(datastr)
 	except KeyboardInterrupt:
 		fh.close()

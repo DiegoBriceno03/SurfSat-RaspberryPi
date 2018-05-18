@@ -38,10 +38,16 @@ python PiCommands/enable_electrometer.py
 sleep 1
 i2cpoll
 echo "Taking Electrometer Data"
+rm -rf data
 python Electrometer/ADCInterruptTest.py &
 adcpid=$!
 sleep 2
 kill -9 $adcpid
+data=$(ls data/*.txt)
+if [ $(cat "$data" | wc | awk '{print $1}') -gt 5 ]
+then echo "Electrometer Data Succcess"
+else echo "ELECTROMETER DATA FAILURE"
+fi
 echo "Disabling Electrometer"
 python PiCommands/disable_electrometer.py
 sleep 1
@@ -52,8 +58,9 @@ echo "** LANGMUIR PROBE TEST **"
 echo "Running Langmuir Probe Test"
 rm data.txt
 python CCDR/CCDRFirmwarePLP.py
-if [ $(cat data.txt | wc | awk '{print $1}') -gt 10 ]
+if [ $(cat data.txt | wc | awk '{print $1}') -gt 5 ]
 then echo "Langmuir Probe Data Success"
+else echo "LANGMUIR PROBE DATA FAILURE"
 fi
 rm data.txt
 

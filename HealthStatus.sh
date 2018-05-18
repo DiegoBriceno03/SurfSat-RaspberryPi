@@ -48,6 +48,7 @@ if [ $(cat "$data" | wc | awk '{print $1}') -gt 5 ]
 then echo "Electrometer Data Succcess"
 else echo "ELECTROMETER DATA FAILURE"
 fi
+rm -rf data
 echo "Disabling Electrometer"
 python PiCommands/disable_electrometer.py
 sleep 1

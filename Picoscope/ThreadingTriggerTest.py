@@ -36,6 +36,8 @@ print("Firmware: %s/%s" % (ps.info.firmware_version_1, ps.info.firmware_version_
 print("ADC Range: %+X/%+X" % (ps.info.min_adc, ps.info.max_adc))
 print("Memory: %X (%.0f MiB)" % (ps.info.memory, ps.info.memory/8.0/1024.0/1024.0))
 
+trigger_event = threading.Event()
+
 channels = ps.m.Channels.map[:ps.info.num_channels] 
 for c in channels:
 	status, state = ps.get_channel_state(channel=c)
@@ -111,7 +113,7 @@ while True:
 
 		sys.stdout.write("Waiting for trigger ... ")
 		sys.stdout.flush()
-		status = ps.collect_segment(segment=0, interval=interval, overlapped=False)
+		status = ps.collect_segment(segment=0, interval=interval, overlapped=False, event_handle=trigger_event)
 		print(ps.m.pico_tag(status))
 
 		triggertime = int((time.time()-launchtime)*1e9)

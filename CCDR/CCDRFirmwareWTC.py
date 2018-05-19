@@ -13,7 +13,7 @@ PIN_IRQ_WTC = 25 # BCM pin 25, header pin 22
 I2C_ADDR_WTC = 0x4C
 
 # Crystal frequencies for communications chips
-XTAL_FREQ_WTC = 11059200 # 1843200
+XTAL_FREQ_WTC = 1843200 # 11059200
  
 # UART baudrates for communications chips
 UART_BAUD_WTC = 115200
@@ -95,16 +95,20 @@ print("[%08X] Waiting for data. Hit Ctrl+C to abort." % pigpio.tickDiff(start, p
 # Send test block data
 chip_wtc.block_write(SC16IS750.REG_THR, b'hello')
 
+byte = 0x00
+
 # Collect data and store in RAM until KeyboardInterrupt or timeout
 while pigpio.tickDiff(start, pi.get_current_tick()) < 0x35A4E900:
 	try:
 		time.sleep(0.1)
+		chip_wtc.byte_write(SC16IS750.REG_THR, byte)
+		byte = (byte + 1) & 0xFF
 		while len(data["WTC"]) > 0:
-			tick, irq, lsr, num, block = values.pop(0)
+			tick, irq, lsr, num, block = data["WTC"].pop(0)
 			tick = pigpio.tickDiff(start, tick)
-			sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %-10s) (LSR: 0x%02X) (Bytes: %02d/%02d):" % (board, tick, irq, INTERRUPTS.get(irq), lsr, len(block), num))
+			sys.stdout.write("(Board: %s) (Tick: %d) (IRQ: 0x%02X %-10s) (LSR: 0x%02X) (Bytes: %02d/%02d):" % ("WTC", tick, irq, INTERRUPTS.get(irq), lsr, len(block), num))
 			for i in range(len(block)):
-				sys.stdout.write(" 0x%02X" % data)
+				sys.stdout.write(" 0x%02X" % block[i])
 			sys.stdout.write("\n")
 	except KeyboardInterrupt: break
 

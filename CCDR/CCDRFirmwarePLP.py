@@ -131,6 +131,7 @@ pi.set_mode(PIN_PLP_ENABLE, pigpio.OUTPUT)
 
 pi.write(PIN_PLP_RESET,  1) # active low
 pi.write(PIN_PLP_ENABLE, 1) # active high
+time.sleep(0.1)
 
 # Set up IRQ pins as inputs
 #pi.set_mode(PIN_IRQ_WTC, pigpio.INPUT)
@@ -174,6 +175,7 @@ print("[%08X] Saving data to '%s' ..." % (pigpio.tickDiff(start, pi.get_current_
 
 # Close handle to serial converter chip and release pigpio object
 chip_plp.close()
+pi.write(PIN_PLP_ENABLE, 0) # active high
 pi.stop()
 
 # Write collected data from RAM to file
